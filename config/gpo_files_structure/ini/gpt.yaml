@@ -1,0 +1,5 @@
+General:
+  include: 
+  attributes:
+  - Version
+  - displayName

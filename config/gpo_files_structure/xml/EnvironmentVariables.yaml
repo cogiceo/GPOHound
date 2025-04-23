@@ -1,0 +1,28 @@
+EnvironmentVariables:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    EnvironmentVariable:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - value
+          - user
+          - partial
+          - disabled

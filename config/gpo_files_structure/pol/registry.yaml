@@ -1,0 +1,84 @@
+REG_NONE:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_SZ:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_EXPAND_SZ:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_BINARY:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_DWORD:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_DWORD_BIG_ENDIAN:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_LINK:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_MULTI_SZ:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_RESOURCE_LIST:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_FULL_RESOURCE_DESCRIPTOR:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_RESOURCE_REQUIREMENTS_LIST:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data
+REG_QWORD:
+  include:
+  attributes:
+  - Hive
+  - Type
+  - Size
+  - Data

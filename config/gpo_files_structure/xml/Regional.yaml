@@ -1,0 +1,49 @@
+Regional:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    RegionalOptions:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - localeId
+          - localeName
+          - numDeciSymbol
+          - numNumDecimals
+          - numGrpSymbol
+          - numDigitGrpFmt
+          - numNegSymbol
+          - numNegFormat
+          - numLeadingZeros
+          - numListSeparator
+          - numMeasurement
+          - currSymbol
+          - currPosFormat
+          - currNegFormat
+          - currDeciSymbol
+          - currNumDecimals
+          - currGrpSymbol
+          - currDigitGrpFmt
+          - timeFormat
+          - timeSeparator
+          - timeAmSymbol
+          - timePmSymbol
+          - dateInterpretYearMax
+          - dateShortFormat
+          - dateSeparator
+          - dateLongFormat
+          - disabled

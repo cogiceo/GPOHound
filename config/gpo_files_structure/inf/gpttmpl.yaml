@@ -1,0 +1,156 @@
+Unicode:
+  type : key-value
+  include:
+  attributes:
+    - Unicode
+Version:
+  type : key-value
+  include:
+  attributes:
+    - signature
+    - Revision
+System Access:
+  type : key-value
+  include:
+  attributes:
+    - MinimumPasswordAge
+    - MaximumPasswordAge
+    - MinimumPasswordLength
+    - PasswordComplexity
+    - PasswordHistorySize
+    - ClearTextPassword
+    - RequireLogonToChangePassword
+    - LockoutBadCount
+    - ResetLockoutCount
+    - LockoutDuration
+    - ForceLogoffWhenHourExpire
+    - LSAAnonymousNameLookup 
+    - EnableAdminAccount 
+    - EnableGuestAccount 
+    - NewAdministratorName
+    - NewGuestName
+Kerberos Policy:
+  type : key-value
+  include:
+  attributes:
+  - MaxTicketAge
+  - MaxRenewAge
+  - MaxServiceAge
+  - MaxClockSkew
+  - TicketValidateClient
+System Log:
+  type : key-value
+  include:
+  attributes:
+  - MaximumLogSize
+  - AuditLogRetentionPeriod
+  - RetentionDays
+  - RestrictGuestAccess
+Security Log:
+  type : key-value
+  include:
+  attributes:
+  - MaximumLogSize
+  - AuditLogRetentionPeriod
+  - RetentionDays
+  - RestrictGuestAccess
+Application Log:
+  type : key-value
+  include:
+  attributes:
+  - MaximumLogSize
+  - AuditLogRetentionPeriod
+  - RetentionDays
+  - RestrictGuestAccess
+Event Audit:
+  type : key-value
+  include:
+  attributes:
+  - AuditSystemEvents
+  - AuditLogonEvents
+  - AuditPrivilegeUse
+  - AuditPolicyChange
+  - AuditAccountManage
+  - AuditProcessTracking
+  - AuditDSAccess
+  - AuditObjectAccess
+  - AuditAccountLogon
+Registry Values:
+  type : key-value
+  include:
+  attributes:
+    - Hive
+    - Type
+    - Data
+Privilege Rights:
+  type : key-value
+  include:
+  attributes:
+  - SeNetworkLogonRight
+  - SeTcbPrivilege
+  - SeMachineAccountPrivilege
+  - SeIncreaseQuotaPrivilege
+  - SeRemoteInteractiveLogonRight
+  - SeBackupPrivilege
+  - SeChangeNotifyPrivilege
+  - SeCreatePagefilePrivilege
+  - SeSystemtimePrivilege
+  - SeCreateTokenPrivilege
+  - SeCreateGlobalPrivilege
+  - SeCreatePermanentPrivilege
+  - SeDebugPrivilege
+  - SeDenyNetworkLogonRight
+  - SeDenyBatchLogonRight
+  - SeDenyServiceLogonRight
+  - SeDenyInteractiveLogonRight
+  - SeDenyRemoteInteractiveLogonRight
+  - SeEnableDelegationPrivilege
+  - SeRemoteShutdownPrivilege
+  - SeAuditPrivilege
+  - SeImpersonatePrivilege
+  - SeIncreaseBasePriorityPrivilege
+  - SeLoadDriverPrivilege
+  - SeLockMemoryPrivilege
+  - SeBatchLogonRight
+  - SeServiceLogonRight
+  - SeInteractiveLogonRight
+  - SeSecurityPrivilege
+  - SeSystemEnvironmentPrivilege
+  - SeManageVolumePrivilege
+  - SeProfileSingleProcessPrivilege
+  - SeSystemProfilePrivilege
+  - SeUndockPrivilege
+  - SeAssignPrimaryTokenPrivilege
+  - SeRestorePrivilege
+  - SeShutdownPrivilege
+  - SeSyncAgentPrivilege
+  - SeTakeOwnershipPrivilege
+  - SeTrustedCredManAccessPrivilege
+  - SeTimeZonePrivilege
+  - SeCreateSymbolicLinkPrivilege
+  - SeIncreaseWorkingSetPrivilege
+  - SeRelabelPrivilege
+Registry Keys:
+  type : comma-separated
+  include:
+  attributes:
+    - PermPropagationMode
+    - AclString
+Service General Setting:
+  type : comma-separated
+  include:
+  attributes:
+    - AclString
+    - StartupMode
+File Security:
+  type : comma-separated
+  include:
+  attributes:
+    - PermPropagationMode
+    - AclString
+Group Membership:
+  type : key-value
+  include:
+  attributes:
+    - Members
+    - Memberof

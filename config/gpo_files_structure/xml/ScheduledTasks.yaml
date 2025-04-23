@@ -1,0 +1,171 @@
+ScheduledTasks:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    ImmediateTask:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - name
+          - appName
+          - args
+          - startIn
+          - comment
+          - runAs
+          - cpassword
+          - enabled
+          - deleteWhenDone
+          - maxRunTime
+          - startOnlyIfIdle
+          - idleMinutes
+          - deadlineMinutes
+          - stopOnIdleEnd
+          - noStartIfOnBatteries
+          - stopIfGoingOnBatteries
+          - systemRequired
+          - action
+    ImmediateTaskV2:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - changed
+      - uid
+      - image
+      elements:
+        Filters:
+          include: 
+          elements:
+            FilterOs:
+              include: 
+              attributes:
+              - hidden
+              - not
+              - bool
+              - class
+              - version
+              - type
+              - edition
+              - sp
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - runAs
+          - logonType
+          - cpassword
+          elements:
+            Task:
+              include: 
+    Task:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - appName
+          - args
+          - startIn
+          - comment
+          - maxRunTime
+          - runAs
+          - cpassword
+          - enabled
+          - deleteWhenDone
+          - deadlineMinutes
+          - startOnlyIfIdle
+          - stopOnIdleEnd
+          - noStartIfOnBatteries
+          - stopIfGoingOnBatteries
+          - systemRequired
+          elements:
+            Triggers:
+              include: 
+              elements:
+                Trigger:
+                  include: 
+                  attributes:
+                  - type
+                  - startHour
+                  - startMinutes
+                  - beginYear
+                  - beginMonth
+                  - beginDay
+                  - hasEndDate
+                  - repeatTask
+                  - interval
+                  - days
+                  - months
+                  - week
+                  - idleMinute
+                  - endYear
+                  - endMonth
+                  - endDay
+                  - minutesInterval
+                  - killAtDurationEnd
+                  - minutesDuration
+    TaskV2:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - changed
+      - uid
+      - bypassErrors
+      - userContext
+      - removePolicy
+      - image
+      - desc
+      elements:
+        Filters:
+          include: 
+          elements:
+            FilterRunOnce:
+              include: 
+              attributes:
+              - hidden
+              - not
+              - bool
+              - id
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - runAs
+          - logonType
+          - cpassword
+          elements:
+            Task:
+              include: 

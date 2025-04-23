@@ -1,0 +1,104 @@
+{
+    "queries": [
+        {
+            "name": "All relationships added by GPO",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=()-[r]-() WHERE r.gpohound = true RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Local Administrators",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p1=()-[r:AdminTo]->() WHERE r.gpohound = true WITH p1 OPTIONAL MATCH p2=()-[r1:MemberOf*1..]->()-[r2:AdminTo]->() WHERE r2.gpohound = true RETURN p1,p2"
+                }
+            ]
+        },
+        {
+            "name": "Local Remote Desktop Users",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p1=()-[r:CanRDP]->() WHERE r.gpohound = true WITH p1 OPTIONAL MATCH p2=()-[r1:MemberOf*1..]->()-[r2:CanRDP]->() WHERE r2.gpohound = true RETURN p1,p2"
+                }
+            ]
+        },
+        {
+            "name": "Local Distributed COM Users",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p1=()-[r:ExecuteDCOM]->() WHERE r.gpohound = true WITH p1 OPTIONAL MATCH p2=()-[r1:MemberOf*1..]->()-[r2:ExecuteDCOM]->() WHERE r2.gpohound = true RETURN p1,p2"
+                }
+            ]
+        },
+        {
+            "name": "Local Remote Management Users",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p1=()-[r:CanPSRemote]->() WHERE r.gpohound = true WITH p1 OPTIONAL MATCH p2=()-[r1:MemberOf*1..]->()-[r2:CanPSRemote]->() WHERE r2.gpohound = true RETURN p1,p2"
+                }
+            ]
+        },
+        {
+            "name": "Local Privilege Escalation",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p1=()-[r:CanPrivEsc]->() WHERE r.gpohound = true WITH p1 OPTIONAL MATCH p2=()-[r1:MemberOf*1..]->()-[r2:CanPrivEsc]->() WHERE r2.gpohound = true RETURN p1,p2"
+                }
+            ]
+        },
+        {
+            "name": "Find Computers where SMB Signing is not Required",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:Computer) WHERE n.smbSigningRequired = False RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Find Computers where SMB Signing is not Enabled",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:Computer) WHERE n.smbSigningEnabled = False RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Find Computers where NTLMv1 is Supported",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:Computer) WHERE n.NTLMv1Support = True RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Find Computers with VNC credentials",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:Computer) WHERE ANY(k IN keys(n) WHERE toLower(k) CONTAINS 'vnc' and toLower(k) CONTAINS 'pass') RETURN n"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,100 @@
+RegistrySettings:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Collection:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      - status
+      elements:
+        Collection:
+          include: 
+          attributes:
+          - clsid
+          - name
+          elements:
+            Collection:
+              include: 
+              attributes:
+              - clsid
+              - name
+              elements:
+                Collection:
+                  include: 
+                  attributes:
+                  - clsid
+                  - name
+                  - disabled
+                  elements:
+                    Registry:
+                      include: 
+                      attributes:
+                      - clsid
+                      - name
+                      - image
+                      - desc
+                      - status
+                      - uid
+                      elements:
+                        Properties:
+                          include: 
+                          attributes:
+                          - action
+                          - default
+                          - hive
+                          - key
+                          - type
+                          - name
+                          - value
+                          - defaultValue
+                          - displayDecimal
+                          - bitfield
+                          elements:
+                            SubProp:
+                              include: 
+                              attributes:
+                              - id
+                              - value
+                              - mask
+    Registry:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - status
+      - image
+      - changed
+      - uid
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - default
+          - hive
+          - key
+          - name
+          - type
+          - value
+          - displayDecimal
+          - defaultValue
+          - bitfield
+          - disabled
+          elements:
+            SubProp:
+              include: 
+              attributes:
+              - id
+              - value
+              - mask

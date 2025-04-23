@@ -1,0 +1,103 @@
+InternetSettings:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    IE7:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - status
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Collection:
+          include: 
+          attributes:
+          - clsid
+          elements:
+            Registry:
+              include: 
+              attributes:
+              - clsid
+              - name
+              elements:
+                Properties:
+                  include: 
+                  attributes:
+                  - action
+                  - default
+                  - hive
+                  - key
+                  - name
+                  - type
+                  - value
+        Filters:
+          include: 
+        Properties:
+          include: 
+          elements:
+            Reg:
+              include: 
+              attributes:
+              - id
+              - type
+              - hive
+              - key
+              - name
+              - value
+              - disabled
+              - defaultValue
+              - bitfield
+              elements:
+                SubProp:
+                  include: 
+                  attributes:
+                  - id
+                  - value
+                  - mask
+    Internet:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - status
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          elements:
+            Reg:
+              include: 
+              attributes:
+              - id
+              - type
+              - hive
+              - key
+              - name
+              - value
+              - disabled
+              - defaultValue
+              - bitfield
+              elements:
+                SubProp:
+                  include: 
+                  attributes:
+                  - id
+                  - value
+                  - mask

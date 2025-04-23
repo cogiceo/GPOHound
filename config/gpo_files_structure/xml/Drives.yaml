@@ -1,0 +1,33 @@
+Drives:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Drive:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - thisDrive
+          - allDrives
+          - userName
+          - cpassword
+          - path
+          - label
+          - persistent
+          - useLetter
+          - letter
+          - disabled

@@ -1,0 +1,124 @@
+StartMenuTaskbar:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    StartMenu:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - changed
+      - image
+      - uid
+      - disabled
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - largeMFUIcons
+          - minMFU
+          - autoCascade
+          - notifyNewApps
+          - showControlPanel
+          - enableDragDrop
+          - startMenuFavorites
+          - showHelp
+          - showMyComputer
+          - showMyDocs
+          - showMyMusic
+          - showNetPlaces
+          - showMyPics
+          - showNetConn
+          - showPrinters
+          - showRun
+          - scrollPrograms
+          - showSearch
+          - showRecentDocs
+          - clearStartDocsList
+          - cShowLogoff
+          - cShowRun
+          - cEnableDragDrop
+          - cCascadeControlPanel
+          - cCascadeMyDocuments
+          - cCascadeMyPictures
+          - cCascadeNetworkConnections
+          - cCascadePrinters
+          - cScrollPrograms
+          - cPersonalized
+    StartMenuVista:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - changed
+      - image
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      - disabled
+      elements:
+        Filters:
+          include: 
+          elements:
+            FilterOs:
+              include: 
+              attributes:
+              - hidden
+              - not
+              - bool
+              - class
+              - version
+              - type
+              - edition
+              - sp
+        Properties:
+          include: 
+          attributes:
+          - minMFU
+          - showMyComputer
+          - connectTo
+          - showControlPanel
+          - defaultPrograms
+          - showMyDocs
+          - enableContextMenu
+          - showFavorites
+          - showGames
+          - showHelp
+          - highlightNew
+          - showMyMusic
+          - showNetPlaces
+          - openSubMenus
+          - personalFolders
+          - showMyPics
+          - showPrinters
+          - runCommand
+          - showSearch
+          - searchCommunications
+          - searchFavorites
+          - searchFiles
+          - searchPrograms
+          - trackProgs
+          - sortAllPrograms
+          - systemAdmin
+          - useLargeIcons
+          - showRecentDocs
+          - clearStartDocsList
+          - cShowAdminTools
+          - cShowFavorites
+          - cShowLogoff
+          - cShowRun
+          - cEnableDragDrop
+          - cCascadeControlPanel
+          - cCascadeMyDocuments
+          - cCascadeNetworkConnections
+          - cCascadeMyPictures
+          - cCascadePrinters
+          - cScrollPrograms
+          - cSmallIcons
+          - cPersonalized

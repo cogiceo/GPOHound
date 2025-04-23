@@ -1,0 +1,112 @@
+PowerOptions:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    GlobalPowerOptions:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - showIcon
+          - promptPassword
+          - enableHibernation
+          - closeLid
+          - pressPowerBtn
+          - pressSleepBtn
+          - disabled
+    GlobalPowerOptionsV2:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - nameGuid
+          - default
+          - requireWakePwdAC
+          - requireWakePwdDC
+          - turnOffHDAC
+          - turnOffHDDC
+          - sleepAfterAC
+          - sleepAfterDC
+          - allowHybridSleepAC
+          - allowHybridSleepDC
+          - hibernateAC
+          - hibernateDC
+          - lidCloseAC
+          - lidCloseDC
+          - pbActionAC
+          - pbActionDC
+          - strtMenuActionAC
+          - strtMenuActionDC
+          - linkPwrMgmtAC
+          - linkPwrMgmtDC
+          - procStateMinAC
+          - procStateMinDC
+          - procStateMaxAC
+          - procStateMaxDC
+          - displayOffAC
+          - displayOffDC
+          - adaptiveAC
+          - adaptiveDC
+          - critBatActionAC
+          - critBatActionDC
+          - lowBatteryLvlAC
+          - lowBatteryLvlDC
+          - critBatteryLvlAC
+          - critBatteryLvlDC
+          - lowBatteryNotAC
+          - lowBatteryNotDC
+          - lowBatteryActionAC
+          - lowBatteryActionDC
+    PowerScheme:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - default
+          - monitorAc
+          - monitorDc
+          - hardDiskAc
+          - hardDiskDc
+          - standbyAc
+          - standbyDc
+          - hibernateAc
+          - hibernateDc
+          - disabled

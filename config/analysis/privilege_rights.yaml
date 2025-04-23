@@ -1,0 +1,80 @@
+# Default trustees are based on the join groups values in "Default values" of the "User Rights Assignment" documentation
+# https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/user-rights-assignment
+
+SeDebugPrivilege:
+  analysis : "SeDebugPrivilege: Allows a user to debug and interact with any process running on the system"
+  default_trutees: 
+    - S-1-5-32-544
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeBackupPrivilege:
+  analysis : "SeBackupPrivilege : Allows a user to access sensitive files"
+  default_trutees: 
+    - S-1-5-32-544
+    - S-1-5-32-551
+    - S-1-5-32-549
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/SeBackupPrivilege.html
+
+SeManageVolumePrivilege:
+  analysis : "SeManageVolumePrivilege : Allows a user to perform volume or disk management tasks"
+  default_trutees: 
+    - S-1-5-32-544
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeAssignPrimaryTokenPrivilege:
+  analysis : 'SeAssignPrimaryTokenPrivilege: Allows a user to impersonate tokens and escalate privilege to "NT AUTHORITY\SYSTEM" '
+  default_trutees:
+    - S-1-5-32-544
+    - S-1-5-20
+    - S-1-5-19
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeImpersonatePrivilege:
+  analysis : "SeImpersonatePrivilege : Allows a user to create a process under the security context of another user"
+  default_trutees: 
+    - S-1-5-32-544
+    - S-1-5-19
+    - S-1-5-20
+    - S-1-5-6
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeRestorePrivilege:
+  analysis : "SeRestorePrivilege : Allows a users to bypass file, directory, registry, and other persistent object permissions when they restore backed up files and directories"
+  default_trutees: 
+    - S-1-5-32-544
+    - S-1-5-32-551
+    - S-1-5-32-549
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+  
+SeTakeOwnershipPrivilege:
+  analysis : "SeTakeOwnershipPrivilege : Allows users to take ownership of objects, such as Active Directory objects, NTFS files and folders, printers, registry keys, services, processes, and threads"
+  default_trutees: 
+    - S-1-5-32-544
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeTcbPrivilege:
+  analysis : "SeTcbPrivilege : Determines whether a process can assume the identity of any user and thereby gain access to the resources that the user is authorized to access"
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeCreateTokenPrivilege:
+  analysis : "SeCreateTokenPrivilege : Determines which accounts a process can use to create a token"
+  default_trutees: 
+    - S-1-5-18
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/
+
+SeLoadDriverPrivilege:
+  analysis : "SeLoadDriverPrivilege : Allows a user to dynamically load and unload device drivers"
+  default_trutees: 
+    - S-1-5-32-544
+    - S-1-5-32-550
+  edge : CanPrivEsc
+  references: https://gtworek.github.io/Priv2Admin/

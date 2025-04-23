@@ -1,0 +1,94 @@
+Printers:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    LocalPrinter:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - port
+          - path
+          - default
+          - deleteAll
+          - location
+          - comment
+          - disabled
+    PortPrinter:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - ipAddress
+          - action
+          - location
+          - localName
+          - comment
+          - default
+          - skipLocal
+          - useDNS
+          - path
+          - deleteAll
+          - lprQueue
+          - snmpCommunity
+          - protocol
+          - portNumber
+          - doubleSpool
+          - snmpEnabled
+          - snmpDevIndex
+          - disabled
+    SharedPrinter:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - comment
+          - path
+          - location
+          - default
+          - skipLocal
+          - deleteAll
+          - persistent
+          - deleteMaps
+          - port
+          - username
+          - cpassword
+          - disabled

@@ -1,0 +1,28 @@
+Devices:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Device:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - deviceAction
+          - deviceClass
+          - deviceType
+          - deviceClassGUID
+          - deviceTypeID
+          - disabled

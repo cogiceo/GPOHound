@@ -1,0 +1,34 @@
+Folders:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Folder:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - status
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - path
+          - readOnly
+          - archive
+          - hidden
+          - deleteSubFolders
+          - deleteFiles
+          - deleteFolder
+          - deleteReadOnly
+          - deleteIgnoreErrors
+          - disabled

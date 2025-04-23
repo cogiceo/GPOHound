@@ -1,0 +1,29 @@
+IniFiles:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Ini:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - status
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - path
+          - section
+          - value
+          - property
+          - action
+          - disabled

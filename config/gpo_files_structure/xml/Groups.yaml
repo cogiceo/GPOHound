@@ -1,0 +1,69 @@
+Groups:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Group:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - newName
+          - description
+          - userAction
+          - deleteAllUsers
+          - deleteAllGroups
+          - removeAccounts
+          - groupName
+          - groupSid
+          - disabled
+          elements:
+            Members:
+              include: 
+              elements:
+                Member:
+                  include: 
+                  attributes:
+                  - name
+                  - action
+                  - sid
+    User:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - newName
+          - fullName
+          - description
+          - cpassword
+          - changeLogon
+          - noChange
+          - neverExpires
+          - acctDisabled
+          - userName
+          - expires

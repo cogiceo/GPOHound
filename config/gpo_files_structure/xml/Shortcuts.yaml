@@ -1,0 +1,35 @@
+Shortcuts:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    Shortcut:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - pidl
+          - targetType
+          - action
+          - comment
+          - shortcutKey
+          - startIn
+          - arguments
+          - iconIndex
+          - targetPath
+          - iconPath
+          - window
+          - shortcutPath
+          - disabled

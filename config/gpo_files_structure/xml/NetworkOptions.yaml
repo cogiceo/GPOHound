@@ -1,0 +1,71 @@
+NetworkOptions:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    DUN:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - user
+          - name
+          - phoneNumber
+          - disabled
+    VPN:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - user
+          - name
+          - ipAddress
+          - useDNS
+          - dialFirst
+          - trayIcon
+          - showProgress
+          - showPassword
+          - showDomain
+          - redialCount
+          - redialPause
+          - idleDisconnect
+          - reconnect
+          - customSettings
+          - securePassword
+          - secureData
+          - useLogon
+          - vpnStrategy
+          - encryptionType
+          - eap
+          - pap
+          - spap
+          - chap
+          - msChap
+          - oldMsChap
+          - msChapV2
+          - disabled

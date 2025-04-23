@@ -1,0 +1,33 @@
+NetworkShareSettings:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    NetShare:
+      include: 
+      attributes:
+      - clsid
+      - image
+      - name
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - name
+          - path
+          - comment
+          - allRegular
+          - allHidden
+          - allAdminDrive
+          - limitUsers
+          - abe
+          - userLimit
+          - disabled

@@ -1,0 +1,136 @@
+FolderOptions:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    FileType:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - fileExt
+          - application
+          - appProgID
+          - configActions
+          - iconPath
+          - iconIndex
+          - confirmOpen
+          - alwaysShow
+          - sameWindow
+          - name
+          - appUsed
+          - default
+          - useDDE
+          - ddeMessage
+          - ddeApplication
+          - ddeAppNotRunning
+          - ddeTopic
+          - disabled
+    GlobalFolderOptions:
+      include: 
+      attributes:
+      - clsid
+      - image
+      - name
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - noNetCrawling
+          - folderContentsInfoTip
+          - friendlyTree
+          - fullPathAddress
+          - fullPath
+          - disableThumbnailCache
+          - hidden
+          - hideFileExt
+          - separateProcess
+          - showSuperHidden
+          - classicViewState
+          - persistBrowsers
+          - showControlPanel
+          - showCompColor
+          - showInfoTip
+          - forceGuest
+          - webViewBarricade
+          - disabled
+    GlobalFolderOptionsVista:
+      include: 
+      attributes:
+      - clsid
+      - image
+      - name
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - alwaysShowIcons
+          - alwaysShowMenus
+          - displayIconThumb
+          - displayFileSize
+          - displaySimpleFolders
+          - fullPath
+          - hidden
+          - hideFileExt
+          - showSuperHidden
+          - separateProcess
+          - classicViewState
+          - persistBrowsers
+          - showDriveLetter
+          - showCompColor
+          - showInfoTip
+          - showPreviewHandlers
+          - useCheckBoxes
+          - useSharingWizard
+          - listViewTyping
+          - disabled
+    OpenWith:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - fileExtension
+          - applicationPath
+          - default
+          - disabled

@@ -1,0 +1,40 @@
+NTServices:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    NTService:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - serviceAction
+          - startupType
+          - serviceName
+          - timeout
+          - accountName
+          - cpassword
+          - interact
+          - firstFailure
+          - secondFailure
+          - thirdFailure
+          - resetFailCountDelay
+          - restartServiceDelay
+          - restartComputerDelay
+          - restartMessage
+          - program
+          - args
+          - append
+          - disabled

@@ -1,0 +1,41 @@
+DataSources:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    DataSource:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - bypassErrors
+      - userContext
+      - removePolicy
+      - desc
+      - changed
+      - uid
+      elements:
+        Filters:
+          include: 
+        Properties:
+          include: 
+          attributes:
+          - action
+          - userDSN
+          - dsn
+          - driver
+          - description
+          - username
+          - cpassword
+          - disabled
+          elements:
+            Attributes:
+              include: 
+              elements:
+                Attribute:
+                  include: 
+                  attributes:
+                  - name
+                  - value

@@ -1,0 +1,30 @@
+Files:
+  include: 
+  attributes:
+  - clsid
+  - disabled
+  elements:
+    File:
+      include: 
+      attributes:
+      - clsid
+      - name
+      - image
+      - changed
+      - uid
+      - desc
+      - bypassErrors
+      - userContext
+      - removePolicy
+      elements:
+        Properties:
+          include: 
+          attributes:
+          - action
+          - fromPath
+          - targetPath
+          - readOnly
+          - archive
+          - hidden
+          - suppress
+          - disabled

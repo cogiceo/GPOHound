@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RegistrySettings clsid="{A3CCFC41-DFDB-43a5-8D26-0FE8B954DA51}">
+	<Registry clsid="{9CD4B2F4-923D-47f5-A062-E897DD1DAD50}" name="ControlPassword"
+		status="ControlPassword" image="7" changed="2025-04-10 17:50:19"
+		uid="{97398310-019E-457F-A392-AB551F4B216A}">
+		<Properties action="U" displayDecimal="0" default="0" hive="HKEY_LOCAL_MACHINE"
+			key="SOFTWARE\TightVNC\Server" name="ControlPassword" type="REG_SZ"
+			value="D7A514D8C556AADE" />
+	</Registry>
+	<Registry clsid="{9CD4B2F4-923D-47f5-A062-E897DD1DAD50}" name="PasswordViewOnly"
+		status="PasswordViewOnly" image="7" changed="2025-04-10 17:50:52"
+		uid="{D5E39B23-92AC-4AC1-BE57-07927770B950}">
+		<Properties action="U" displayDecimal="0" default="0" hive="HKEY_LOCAL_MACHINE"
+			key="SOFTWARE\TightVNC\Server" name="PasswordViewOnly" type="REG_SZ"
+			value="e11fb7ec44e178d9" />
+	</Registry>
+</RegistrySettings>

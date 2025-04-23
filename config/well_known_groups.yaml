@@ -1,0 +1,335 @@
+- sid : "S-1-0"
+  displayname : "Null Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-0-0"
+  displayname : "Nobody"
+  description : "No security principal."
+
+- sid : "S-1-1"
+  displayname : "World Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-1-0"
+  displayname : "Everyone"
+
+- sid : "S-1-2"
+  displayname : "Local Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-2-0"
+  displayname : "Local"
+  description : "A group that includes all users who have logged on locally."
+
+- sid : "S-1-2-1"
+  displayname : "Console Logon"
+  description : "A group that includes users who are logged on to the physical console."
+
+- sid : "S-1-3"
+  displayname : "Creator Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-3-0"
+  displayname : "Creator Owner"
+  description : "A placeholder in an inheritable access control entry (ACE). When the ACE is inherited, the system replaces this SID with the SID for the object's creator."
+
+- sid : "S-1-3-1"
+  displayname : "Creator Group"
+  description : "A placeholder in an inheritable ACE. When the ACE is inherited, the system replaces this SID with the SID for the primary group of the object's creator. The primary group is used only by the POSIX subsystem."
+
+- sid : "S-1-3-2"
+  displayname : "Creator Owner Server"
+  description : "This SID is not used in Windows 2000."
+
+- sid : "S-1-3-3"
+  displayname : "Creator Group Server"
+  description : "This SID is not used in Windows 2000."
+
+- sid : "S-1-3-4"
+  displayname : "Owner Rights"
+  description : "A group that represents the current owner of the object. When an ACE that carries this SID is applied to an object, the system ignores the implicit READ_CONTROL and WRITE_DAC permissions for the object owner."
+
+- sid : "S-1-5-80-0"
+  displayname : "All Services"
+  description : "A group that includes all service processes configured on the system. Membership is controlled by the operating system."
+
+- sid : "S-1-4"
+  displayname : "Non-unique Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-5"
+  displayname : "NT Authority"
+  description : "An identifier authority."
+
+- sid : "S-1-5-1"
+  displayname : "Dialup"
+  description : "A group that includes all users who have logged on through a dial-up connection. Membership is controlled by the operating system."
+
+- sid : "S-1-5-2"
+  displayname : "Network"
+  description : "A group that includes all users that have logged on through a network connection. Membership is controlled by the operating system."
+
+- sid : "S-1-5-3"
+  displayname : "Batch"
+  description : "A group that includes all users that have logged on through a batch queue facility. Membership is controlled by the operating system."
+
+- sid : "S-1-5-4"
+  displayname : "Interactive"
+  description : "A group that includes all users that have logged on interactively. Membership is controlled by the operating system."
+
+- sid : "S-1-5-6"
+  displayname : "Service"
+  description : "A group that includes all security principals that have logged on as a service. Membership is controlled by the operating system."
+
+- sid : "S-1-5-7"
+  displayname : "Anonymous"
+  description : "A group that includes all users that have logged on anonymously. Membership is controlled by the operating system."
+
+- sid : "S-1-5-8"
+  displayname : "Proxy"
+  description : "This SID is not used in Windows 2000."
+
+- sid : "S-1-5-9"
+  displayname : "Enterprise Domain Controllers"
+  description : "A group that includes all domain controllers in a forest that uses an Active Directory directory service. Membership is controlled by the operating system."
+
+- sid : "S-1-5-10"
+  displayname : "Principal Self"
+  description : "A placeholder in an inheritable ACE on an account object or group object in Active Directory. When the ACE is inherited, the system replaces this SID with the SID for the security principal who holds the account."
+
+- sid : "S-1-5-11"
+  displayname : "Authenticated Users"
+  description : "A group that includes all users whose identities were authenticated when they logged on. Membership is controlled by the operating system."
+
+- sid : "S-1-5-12"
+  displayname : "Restricted Code"
+  description : "This SID is reserved for future use."
+
+- sid : "S-1-5-13"
+  displayname : "Terminal Server Users"
+  description : "A group that includes all users that have logged on to a Terminal Services server. Membership is controlled by the operating system."
+
+- sid : "S-1-5-14"
+  displayname : "Remote Interactive Logon"
+  description : "A group that includes all users who have logged on through a terminal services logon."
+
+- sid : "S-1-5-15"
+  displayname : "This Organization"
+  description : "A group that includes all users from the same organization. Only included with AD accounts and only added by a Windows Server 2003 or later domain controller."
+
+- sid : "S-1-5-17"
+  displayname : "This Organization"
+  description : "An account that is used by the default Internet Information Services (IIS) user."
+
+- sid : "S-1-5-18"
+  displayname : "Local System"
+  description : "A service account that is used by the operating system."
+
+- sid : "S-1-5-19"
+  displayname : "NT Authority\\Local Service"
+  description : "Local Service"
+
+- sid : "S-1-5-20"
+  displayname : "NT Authority\\Network Service"
+  description : "Network Service"
+
+- sid : "S-1-5-32-544"
+  displayname : "Administrators"
+  description : "A built-in group. After the initial installation of the operating system, the only member of the group is the Administrator account. When a computer joins a domain, the Domain Admins group is added to the Administrators group. When a server becomes a domain controller, the Enterprise Admins group also is added to the Administrators group."
+
+- sid : "S-1-5-32-544"
+  displayname : "BUILTIN\\Administrators"
+  description : "A built-in group. After the initial installation of the operating system, the only member of the group is the Administrator account. When a computer joins a domain, the Domain Admins group is added to the Administrators group. When a server becomes a domain controller, the Enterprise Admins group also is added to the Administrators group."
+
+- sid : "S-1-5-32-545"
+  displayname : "Users"
+  description : "A built-in group. After the initial installation of the operating system, the only member is the Authenticated Users group. When a computer joins a domain, the Domain Users group is added to the Users group on the computer."
+
+- sid : "S-1-5-32-545"
+  displayname : "BUILTIN\\Users"
+  description : "A built-in group. After the initial installation of the operating system, the only member is the Authenticated Users group. When a computer joins a domain, the Domain Users group is added to the Users group on the computer."
+
+- sid : "S-1-5-32-546"
+  displayname : "Guests"
+  description : "A built-in group. By default, the only member is the Guest account. The Guests group allows occasional or one-time users to log on with limited privileges to a computer's built-in Guest account."
+
+- sid : "S-1-5-32-546"
+  displayname : "BUILTIN\\Guests"
+  description : "A built-in group. By default, the only member is the Guest account. The Guests group allows occasional or one-time users to log on with limited privileges to a computer's built-in Guest account."
+
+- sid : "S-1-5-32-547"
+  displayname : "Power Users"
+  description : "A built-in group. By default, the group has no members. Power users can create local users and groups; modify and delete accounts that they have created; and remove users from the Power Users, Users, and Guests groups. Power users also can install programs; create, manage, and delete local printers; and create and delete file shares."
+
+- sid : "S-1-5-32-547"
+  displayname : "BUILTIN\\Power Users"
+  description : "A built-in group. By default, the group has no members. Power users can create local users and groups; modify and delete accounts that they have created; and remove users from the Power Users, Users, and Guests groups. Power users also can install programs; create, manage, and delete local printers; and create and delete file shares."
+
+- sid : "S-1-5-32-548"
+  displayname : "Account Operators"
+  description : "A built-in group that exists only on domain controllers. By default, the group has no members. By default, Account Operators have permission to create, modify, and delete accounts for users, groups, and computers in all containers and organizational units of Active Directory except the Builtin container and the Domain Controllers OU. Account Operators do not have permission to modify the Administrators and Domain Admins groups, nor do they have permission to modify the accounts for members of those groups."
+
+- sid : "S-1-5-32-548"
+  displayname : "BUILTIN\\Account Operators"
+  description : "A built-in group that exists only on domain controllers. By default, the group has no members. By default, Account Operators have permission to create, modify, and delete accounts for users, groups, and computers in all containers and organizational units of Active Directory except the Builtin container and the Domain Controllers OU. Account Operators do not have permission to modify the Administrators and Domain Admins groups, nor do they have permission to modify the accounts for members of those groups."
+
+- sid : "S-1-5-32-549"
+  displayname : "Server Operators"
+  description : "A built-in group that exists only on domain controllers. By default, the group has no members. Server Operators can log on to a server interactively; create and delete network shares; start and stop services; back up and restore files; format the hard disk of the computer; and shut down the computer."
+
+- sid : "S-1-5-32-549"
+  displayname : "BUILTIN\\Server Operators"
+  description : "A built-in group that exists only on domain controllers. By default, the group has no members. Server Operators can log on to a server interactively; create and delete network shares; start and stop services; back up and restore files; format the hard disk of the computer; and shut down the computer."
+
+- sid : "S-1-5-32-550"
+  displayname : "Print Operators"
+  description : "A built-in group that exists only on domain controllers. Print Operators can manage printers and document queues."
+
+- sid : "S-1-5-32-550"
+  displayname : "BUILTIN\\Print Operators"
+  description : "A built-in group that exists only on domain controllers. Print Operators can manage printers and document queues."
+
+- sid : "S-1-5-32-551"
+  displayname : "Backup Operators"
+  description : "A built-in group. By default, the group has no members. Backup Operators can back up and restore all files on a computer, regardless of the permissions that protect those files. Backup Operators also can log on to the computer and shut it down."
+
+- sid : "S-1-5-32-551"
+  displayname : "BUILTIN\\Backup Operators"
+  description : "A built-in group. By default, the group has no members. Backup Operators can back up and restore all files on a computer, regardless of the permissions that protect those files. Backup Operators also can log on to the computer and shut it down."
+
+- sid : "S-1-5-32-552"
+  displayname : "Replicators"
+  description : "A built-in group that is used by the File Replication service on domain controllers. By default, the group has no members. Do not add users to this group."
+
+- sid : "S-1-5-32-552"
+  displayname : "BUILTIN\\Replicators"
+  description : "A built-in group that is used by the File Replication service on domain controllers. By default, the group has no members. Do not add users to this group."
+
+- sid : "S-1-5-64-10"
+  displayname : "NTLM Authentication"
+  description : "A SID that is used when the NTLM authentication package authenticated the client"
+
+- sid : "S-1-5-64-14"
+  displayname : "SChannel Authentication"
+  description : "A SID that is used when the SChannel authentication package authenticated the client."
+
+- sid : "S-1-5-64-21"
+  displayname : "Digest Authentication"
+  description : "A SID that is used when the Digest authentication package authenticated the client."
+
+- sid : "S-1-5-80"
+  displayname : "NT Service"
+  description : "An NT Service account prefix"
+
+- sid : "S-1-5-80-0"
+  displayname : "All Services"
+  description : "A group that includes all service processes that are configured on the system. Membership is controlled by the operating system."
+
+- sid : "S-1-5-83-0"
+  displayname : "NT VIRTUAL MACHINE\\Virtual Machines"
+  description : "A built-in group. The group is created when the Hyper-V role is installed. Membership in the group is maintained by the Hyper-V Management Service (VMMS). This group requires the \"Create Symbolic Links\" right (SeCreateSymbolicLinkPrivilege), and also the \"Log on as a Service\" right (SeServiceLogonRight)."
+
+- sid : "S-1-16-0"
+  displayname : "Untrusted Mandatory Level"
+  description : "An untrusted integrity level. Note Added in Windows Vista and Windows Server 2008"
+
+- sid : "S-1-16-4096"
+  displayname : "Low Mandatory Level"
+  description : "A low integrity level."
+
+- sid : "S-1-16-8192"
+  displayname : "Medium Mandatory Level"
+  description : "A medium integrity level."
+
+- sid : "S-1-16-8448"
+  displayname : "Medium Plus Mandatory Level"
+  description : "A medium plus integrity level."
+
+- sid : "S-1-16-12288"
+  displayname : "High Mandatory Level"
+  description : "A high integrity level."
+
+- sid : "S-1-16-16384"
+  displayname : "System Mandatory Level"
+  description : "A system integrity level."
+
+- sid : "S-1-16-20480"
+  displayname : "Protected Process Mandatory Level"
+  description : "A protected-process integrity level."
+
+- sid : "S-1-16-28672"
+  displayname : "Secure Process Mandatory Level"
+  description : "A secure process integrity level."
+
+- sid : "S-1-5-32-554"
+  displayname : "BUILTIN\\Pre-Windows 2000 Compatible Access"
+  description : "An alias added by Windows 2000. A backward compatibility group which allows read access on all users and groups in the domain."
+
+- sid : "S-1-5-32-555"
+  displayname : "BUILTIN\\Remote Desktop Users"
+  description : "An alias. Members in this group are granted the right to logon remotely."
+
+- sid : "S-1-5-32-556"
+  displayname : "BUILTIN\\Network Configuration Operators"
+  description : "An alias. Members in this group can have some administrative privileges to manage configuration of networking features."
+
+- sid : "S-1-5-32-557"
+  displayname : "BUILTIN\\Incoming Forest Trust Builders"
+  description : "An alias. Members of this group can create incoming, one-way trusts to this forest."
+
+- sid : "S-1-5-32-558"
+  displayname : "BUILTIN\\Performance Monitor Users"
+  description : "An alias. Members of this group have remote access to monitor this computer."
+
+- sid : "S-1-5-32-559"
+  displayname : "BUILTIN\\Performance Log Users"
+  description : "An alias. Members of this group have remote access to schedule logging of performance counters on this computer."
+
+- sid : "S-1-5-32-560"
+  displayname : "BUILTIN\\Windows Authorization Access Group"
+  description : "An alias. Members of this group have access to the computed tokenGroupsGlobalAndUniversal attribute on User objects."
+
+- sid : "S-1-5-32-561"
+  displayname : "BUILTIN\\Terminal Server License Servers"
+  description : "An alias. A group for Terminal Server License Servers. When Windows Server 2003 Service Pack 1 is installed, a new local group is created."
+
+- sid : "S-1-5-32-562"
+  displayname : "BUILTIN\\Distributed COM Users"
+  description : "An alias. A group for COM to provide computerwide access controls that govern access to all call, activation, or launch requests on the computer."
+
+- sid : "S-1-5-32-569"
+  displayname : "BUILTIN\\Cryptographic Operators"
+  description : "A Builtin Local group. Members are authorized to perform cryptographic operations."
+
+- sid : "S-1-5-32-573"
+  displayname : "BUILTIN\\Event Log Readers"
+  description : "A Builtin Local group. Members of this group can read event logs from local machine."
+
+- sid : "S-1-5-32-574"
+  displayname : "BUILTIN\\Certificate Service DCOM Access"
+  description : "A Builtin Local group. Members of this group are allowed to connect to Certification Authorities in the enterprise."
+
+- sid : "S-1-5-32-575"
+  displayname : "BUILTIN\\RDS Remote Access Servers"
+  description : "A Builtin Local group. Servers in this group enable users of RemoteApp programs and personal virtual desktops access to these resources. In Internet-facing deployments, these servers are typically deployed in an edge network. This group needs to be populated on servers running RD Connection Broker. RD Gateway servers and RD Web Access servers used in the deployment need to be in this group."
+
+- sid : "S-1-5-32-576"
+  displayname : "BUILTIN\\RDS Endpoint Servers"
+  description : "A Builtin Local group. Servers in this group run virtual machines and host sessions where users RemoteApp programs and personal virtual desktops run. This group needs to be populated on servers running RD Connection Broker. RD Session Host servers and RD Virtualization Host servers used in the deployment need to be in this group."
+
+- sid : "S-1-5-32-577"
+  displayname : "BUILTIN\\RDS Management Servers"
+  description : "A Builtin Local group. Servers in this group can perform routine administrative actions on servers running Remote Desktop Services. This group needs to be populated on all servers in a Remote Desktop Services deployment. The servers running the RDS Central Management service must be included in this group."
+
+- sid : "S-1-5-32-578"
+  displayname : "BUILTIN\\Hyper-V Administrators"
+  description : "A Builtin Local group. Members of this group have complete and unrestricted access to all features of Hyper-V."
+
+- sid : "S-1-5-32-579"
+  displayname : "BUILTIN\\Access Control Assistance Operators"
+  description : "A Builtin Local group. Members of this group can remotely query authorization attributes and permissions for resources on this computer."
+
+- sid : "S-1-5-32-580"
+  displayname : "BUILTIN\\Remote Management Users"
+  description : "A Builtin Local group. Members of this group can access WMI resources over management protocols (such as WS-Management via the Windows Remote Management service). This applies only to WMI namespaces that grant access to the user."
+

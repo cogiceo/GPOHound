@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Groups clsid="{3125E937-EB16-4b4c-9934-544FC6D24D26}"><Group clsid="{6D4A79E4-529C-4481-ABD0-F5BD7EA93BA7}" name="Administrators (built-in)" image="2" changed="2025-04-10 17:33:00" uid="{8EB669DB-A3F7-47E7-835B-23AD36B4E6B1}"><Properties action="U" newName="" description="" deleteAllUsers="0" deleteAllGroups="0" removeAccounts="0" groupSid="S-1-5-32-544" groupName="Administrators (built-in)"><Members><Member name="NORTH\adm-aze" action="ADD" sid="S-1-5-21-3266791229-360309560-1389371857-1145"/><Member name="adm-klm" action="ADD" sid=""/></Members></Properties></Group>
+</Groups>
