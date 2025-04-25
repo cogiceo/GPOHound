@@ -20,7 +20,10 @@ class CSVParser:
             # Convert the CSV table to a directory
             with open(file_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                next(reader)
+                try:
+                    next(reader)
+                except StopIteration:
+                    pass
 
                 # Filter column that are not in the config
                 for line in reader:
