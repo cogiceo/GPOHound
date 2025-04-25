@@ -6,7 +6,7 @@ setup(
     description="GPO dumper and analyser",
     author="Maxime AWOUKOU",
     maintainer="Maxime AWOUKOU",
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     packages=[
         "config",
         "config.analysis",
