@@ -1,4 +1,5 @@
 import csv
+import logging
 from gpohound.utils.utils import load_yaml_config
 
 
@@ -23,7 +24,8 @@ class CSVParser:
                 try:
                     next(reader)
                 except StopIteration:
-                    pass
+                    logging.debug("Unable to parse CSV file : %s", file_path)
+                    return {"audit.csv": None }
 
                 # Filter column that are not in the config
                 for line in reader:

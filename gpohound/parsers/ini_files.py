@@ -22,17 +22,14 @@ class INIParser:
         """
         filename = os.path.basename(file_path).lower()
 
-        try:
-            if filename == "gpt.ini":
-                return self._parse_gpt(file_path)
-            elif filename == "scripts.ini":
-                return self._parse_scripts(file_path)
-            elif filename == "psscripts.ini":
-                return self._parse_psscripts(file_path)
-            else:
-                return None
-        except Exception as e:
-            raise ValueError(f'parser error in {file_path}: {e}') from e
+        if filename == "gpt.ini":
+            return self._parse_gpt(file_path)
+        elif filename == "scripts.ini":
+            return self._parse_scripts(file_path)
+        elif filename == "psscripts.ini":
+            return self._parse_psscripts(file_path)
+        else:
+            return None
 
     def _parse_gpt(self, file_path):
         """Parses GPT.ini based on the YAML configuration."""
