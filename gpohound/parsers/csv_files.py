@@ -1,4 +1,5 @@
 import csv
+import logging
 from gpohound.utils.utils import load_yaml_config
 
 
@@ -20,7 +21,11 @@ class CSVParser:
             # Convert the CSV table to a directory
             with open(file_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                next(reader)
+                try:
+                    next(reader)
+                except StopIteration:
+                    logging.debug("Unable to parse CSV file : %s", file_path)
+                    return {"audit.csv": None }
 
                 # Filter column that are not in the config
                 for line in reader:
