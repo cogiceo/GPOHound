@@ -1,6 +1,6 @@
 import logging
 from neo4j import GraphDatabase
-from neo4j.exceptions import ServiceUnavailable, AuthError
+from neo4j.exceptions import ServiceUnavailable, AuthError, CypherSyntaxError
 
 logging.getLogger("neo4j").setLevel(logging.INFO)
 
@@ -16,11 +16,13 @@ class BloodHoundConnector:
         self.password = password
         self.driver = None
         self.connection = bool(self.query("RETURN 1"))
+        self.apoc = None
 
         if self.connection:
-            self.apoc = bool(self.query("RETURN apoc.version()"))
-        else:
-            self.apoc = None
+            try:
+                self.apoc = bool(self.query("RETURN apoc.version()"))
+            except CypherSyntaxError as error:
+                logging.debug("Unable to use the APOC plugin : %s", error)
 
     def query(self, query_str, params=None):
         """
