@@ -1,20 +1,23 @@
 import re
+import logging
 from gpohound.utils.utils import load_yaml_config
 
 
 class GroupAnalyser:
     """Analyse group memberships"""
 
-    def __init__(self, config="config.analysis", config_file="group.yaml"):
+    def __init__(self, ad_utils, config="config.analysis", config_file="group.yaml"):
+        self.ad_utils = ad_utils
         self.privileged_groups = load_yaml_config(config, config_file)
 
-    def analyse(self, processed_gpo):
+    def analyse(self, domain_sid, gpo_guid, processed_gpo):
         """
         Analyse group membership and get the following findings :
             - Trustee added to sensitive groups
             - User added to sensitive group on logon
             - Renamed sensitive groups
             - Trustee added to sensitive group and containing "System Defined Variables"
+            - Members vulnerable to hijacking
         """
         results = {}
 
@@ -49,6 +52,8 @@ class GroupAnalyser:
                                     "edge"
                                 ]
 
+                                hijackable = set()
+
                                 # Iterates over group members
                                 for member in group.get("Members", {}):
 
@@ -64,15 +69,76 @@ class GroupAnalyser:
 
                                         # Find System Defined Variables
                                         name = member.get("name") if member.get("name") else ""
-                                        env_match = re.findall(r"(\%.*?\%)", name)
+
+                                        if "\\" in name:
+                                            member_samaccountname = name.split("\\", 1)[1]
+                                        else:
+                                            member_samaccountname = name
+
+                                        env_match = re.findall(r"\%(.*?)\%", member_samaccountname)
 
                                         if env_match:
-                                            output_groups[group_sid].setdefault("analysis", set()).add(
-                                                'One or more member contain "System Defined Variable".\nTry sAMAccountName spoofing with a user, service account, group or computer (MAQ).'
-                                            )
                                             output_groups[group_sid].setdefault("references", set()).add(
                                                 "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn789194(v=ws.11)#preference-process-variables"
                                             )
+
+                                            if domain_sid:
+                                                supported = True
+                                                for var in env_match:
+                                                    if not var.lower() == "computername":
+                                                        logging.debug("Variable in GPP is not supported")
+                                                        supported = False
+                                                        break
+
+                                                if supported:
+
+                                                    machines = self.ad_utils.get_machines_affected_by_gpo(
+                                                        gpo_guid, domain_sid
+                                                    )
+                                                    if machines:
+                                                        for machine in machines:
+                                                            domain = machine.get("domain", "")
+                                                            machine_name = machine.get("name", "").replace(
+                                                                f".{domain}", ""
+                                                            )
+                                                            samaccountname = re.sub(
+                                                                r"\%computername\%",
+                                                                machine_name,
+                                                                member_samaccountname,
+                                                                flags=re.I,
+                                                            )
+                                                            member = self.ad_utils.get_trustee(
+                                                                samaccountname, domain_sid
+                                                            )
+                                                            if not member.get("sid"):
+                                                                hijackable.add(samaccountname)
+
+                                        # No SID found in processing
+                                        elif not member.get("sid") and domain_sid:
+                                            hijackable.add(member.get("name"))
+
+                                        # Name-Only with a @ for UPN-type
+                                        elif (
+                                            domain_sid
+                                            and "@" in name
+                                            and "\\" not in name
+                                            and not self.ad_utils.samaccountname_to_sid(name, domain_sid)
+                                        ):
+                                            hijackable.add(member.get("name"))
+
+                                if len(hijackable) > 0:
+                                    output_groups[group_sid].setdefault("analysis", set()).add(
+                                        "Identified sAMAccountName(s) vulnerable to hijacking"
+                                    )
+                                    output_groups[group_sid].setdefault("references", set()).add(
+                                        "https://www.cogiceo.com/en/whitepaper_gpphijacking/"
+                                    )
+                                    output_groups[group_sid].setdefault("Hijackable", {"lte_20": [], "gt_20": []})
+                                    for samaccountname in hijackable:
+                                        if len(samaccountname) <= 20:
+                                            output_groups[group_sid]["Hijackable"]["lte_20"].append(samaccountname)
+                                        else:
+                                            output_groups[group_sid]["Hijackable"]["gt_20"].append(samaccountname)
 
                             # User policy type with logged on user added to the group
                             if policy_type == "User" and group.get("Group").get("useraction") == "ADD":
@@ -97,8 +163,8 @@ class GroupAnalyser:
 
                 if priv_group.get("analysis"):
 
-                    priv_group["analysis"] = "\n\n".join(list(output_groups[priv_group_sid]["analysis"]))
-                    priv_group["references"] = "\n".join(list(output_groups[priv_group_sid]["references"]))
+                    priv_group["analysis"] = "\n\n".join(list(sorted(output_groups[priv_group_sid]["analysis"])))
+                    priv_group["references"] = "\n".join(list(sorted(output_groups[priv_group_sid]["references"])))
 
                     results.setdefault(policy_type, []).append(priv_group)
 

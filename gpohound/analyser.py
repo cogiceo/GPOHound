@@ -13,11 +13,11 @@ class GPOAnalyser:
     """Analyse GPOs"""
 
     def __init__(self, ad_utils):
-        self.group_analyser = GroupAnalyser()
+        self.group_analyser = GroupAnalyser(ad_utils)
         self.registry_analyser = RegistryAnalyser()
         self.privilege_rights_analyser = PrivilegeRightsAnalyser(ad_utils)
 
-    def analyse(self, gpo_settings, proccessed_gpo, objects):
+    def analyse(self, domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects):
         """
         Try to find interesting settings in GPO settings:
             - Sensitive group
@@ -31,7 +31,7 @@ class GPOAnalyser:
         if proccessed_gpo:
 
             if not objects or "group" in objects:
-                group_output = self.group_analyser.analyse(proccessed_gpo)
+                group_output = self.group_analyser.analyse(domain_sid, gpo_guid, proccessed_gpo)
                 if group_output:
                     output["Groups"] = group_output
 

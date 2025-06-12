@@ -258,7 +258,9 @@ class GPOHoundCore:
                                         )
 
                                     elif proccessed_gpo:
-                                        analysis = self.gpo_analyser.analyse(gpo_settings, proccessed_gpo, objects)
+                                        analysis = self.gpo_analyser.analyse(
+                                            domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
+                                        )
 
                                         if analysis:
                                             output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(
@@ -287,7 +289,9 @@ class GPOHoundCore:
                         output_proccessed.setdefault(domain, {}).setdefault(gpo_guid, {}).update(proccessed_gpo)
 
                     else:
-                        analysis = self.gpo_analyser.analyse(gpo_settings, proccessed_gpo, objects)
+                        analysis = self.gpo_analyser.analyse(
+                            domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
+                        )
 
                         if analysis:
 
@@ -403,7 +407,9 @@ class GPOHoundCore:
                             if proccessed_gpo:
 
                                 # Analyse GPOs
-                                analysis = self.gpo_analyser.analyse(gpo_settings, proccessed_gpo, objects)
+                                analysis = self.gpo_analyser.analyse(
+                                    domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
+                                )
 
                                 if analysis:
 
