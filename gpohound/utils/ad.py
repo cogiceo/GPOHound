@@ -57,44 +57,43 @@ class ActiveDirectoryUtils:
         )
 
         if trustee:
-
             # Builtin group
             return trustee["displayname"]
 
         elif self.bloodhound.connection:
-
             # Domain group or user
             node = self.bloodhound.find_by_objectid(sid)
 
-            if node and "displayname" in node["n"]:
-                return node["n"]["displayname"]
-
-            elif node and "samaccountname" in node["n"]:
+            if node and "samaccountname" in node["n"]:
                 return node["n"]["samaccountname"]
 
         return None
 
-    def displayname_to_sid(self, name, domain_sid=None):
+    def samaccountname_to_sid(self, samaccountname, domain_sid=None):
         """
         Convert a display name to a SID
         """
         # Try to find Builtin groups
         trustee = next(
-            (item for item in self.config_trustee if item["displayname"].lower() == name.lower()),
+            (item for item in self.config_trustee if item["displayname"].lower() == samaccountname.lower()),
             None,
         )
         if trustee:
             return trustee["sid"]
 
         trustee = next(
-            (item for item in self.config_trustee if item["displayname"].lower() == ("BUILTIN\\" + name).lower()),
+            (
+                item
+                for item in self.config_trustee
+                if item["displayname"].lower() == ("BUILTIN\\" + samaccountname).lower()
+            ),
             None,
         )
         if trustee:
             return trustee["sid"]
 
         if self.bloodhound.connection and domain_sid:
-            node = self.bloodhound.find_by_displayname(name)
+            node = self.bloodhound.find_by_samaccountname(samaccountname, domain_sid)
             if node and "objectid" in node["n"]:
                 return node["n"]["objectid"]
         return None
@@ -106,6 +105,9 @@ class ActiveDirectoryUtils:
         netbios_name = netbios_name.upper()
         if netbios_name in self.netbios_names:
             return self.netbios_names.get(netbios_name)
+        elif "%" in netbios_name:
+            return None
+
         else:
             domains = self.get_domains()
 
@@ -115,7 +117,7 @@ class ActiveDirectoryUtils:
             elif len(domains) == 1:
                 domain_name = domains[0]["name"].lower()
                 confirm_domain = Confirm.ask(
-                    f"Is {netbios_name} the netbios name of {domain_name}",
+                    f"[bold][underline]Is [red]{netbios_name}[/red] the NetBIOS name of [green]{domain_name}[/green][/underline][/bold]",
                     default=False,
                 )
 
@@ -126,7 +128,7 @@ class ActiveDirectoryUtils:
                     self.netbios_names.update({netbios_name: None})
 
             else:
-                prompt_string = f"[bold][underline]Enter the domain associated with the netbios name [red]{netbios_name}[/red]:[/underline]\n  0. Not found[/bold]"
+                prompt_string = f"[bold][underline]Enter the domain associated with the NetBIOS name [green]{netbios_name}[/green]:[/underline]\n  0. Not found[/bold]"
                 domains_dict = {"0": None}
 
                 for idx, domain in enumerate(domains, start=1):
@@ -162,27 +164,46 @@ class ActiveDirectoryUtils:
                 name = self.sid_to_name(sid)
 
             # Builtin groups
-            elif self.displayname_to_sid(trustee):
+            elif self.samaccountname_to_sid(trustee):
                 name = trustee
-                sid = self.displayname_to_sid(trustee)
+                sid = self.samaccountname_to_sid(trustee)
 
-            # Find based on netbios\username
+            # Find based on domain\trustee or NetBIOS\trustee
             elif "\\" in trustee and not trustee.upper().startswith("BUILTIN\\"):
-                netbios_name, samaccountname = trustee.split("\\", 1)
-                netbios_name = netbios_name.upper()
-                domain_name = self.netbios_to_domain(netbios_name)
-                if domain_name:
-                    domain_sid = self.domain_to_sid(domain_name)
-                    sid = self.displayname_to_sid(samaccountname, domain_sid)
-                else:
-                    sid = None
-
+                sid = None
                 name = trustee
 
-            # Find based on name and domain_sid
+                domain, samaccountname = trustee.split("\\", 1)
+                domain_sid = self.domain_to_sid(domain)
+
+                # DNS Domain Name
+                if domain_sid:
+                    sid = self.samaccountname_to_sid(samaccountname, domain_sid)
+
+                # NetBIOS Domain Name
+                else:
+                    domain_name = self.netbios_to_domain(domain)
+                    if domain_name:
+                        domain_sid = self.domain_to_sid(domain_name)
+                        sid = self.samaccountname_to_sid(samaccountname, domain_sid)
+
+            # Find based on trustee@DnsDomainName (UPN)
+            elif "@" in trustee and self.domain_to_sid(trustee.rsplit("@", 1)[1]):
+                sid = None
+                name = trustee
+
+                (
+                    samaccountname,
+                    domain_dns,
+                ) = trustee.rsplit("@", 1)
+                domain_sid = self.domain_to_sid(domain_dns)
+                if domain_sid:
+                    sid = self.samaccountname_to_sid(samaccountname, domain_sid)
+
+            # Find based on isolated name and domain_sid
             else:
                 name = trustee
-                sid = self.displayname_to_sid(name, domain_sid)
+                sid = self.samaccountname_to_sid(name, domain_sid)
 
             if sid and name and domain_sid:
                 domain = self.find_by_sid(domain_sid)
@@ -302,6 +323,18 @@ class ActiveDirectoryUtils:
 
         if self.bloodhound.connection:
             results = self.bloodhound.containers_affected_by_gpo(gpo_guid, domain_sid)
+            if results:
+                return self.nodes_to_dict(results)
+
+        return None
+
+    def get_machines_affected_by_gpo(self, gpo_guid, domain_sid):
+        """
+        Get machines affected by a GPO
+        """
+
+        if self.bloodhound.connection:
+            results = self.bloodhound.machines_affected_by_gpo(gpo_guid, domain_sid)
             if results:
                 return self.nodes_to_dict(results)
 

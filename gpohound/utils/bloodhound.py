@@ -94,14 +94,14 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
-    def find_by_displayname(self, name):
+    def find_by_samaccountname(self, samaccountname, domain_sid):
         """
-        Find an object by his name
+        Find a GPO with his GUID and domain SID
         """
-        params = {"name": name}
+        params = {"samaccountname": samaccountname, "domain_sid": domain_sid}
         query = """
                 MATCH (n) 
-                WHERE toUpper(n.samaccountname) = toUpper($name) OR toUpper(n.displayname) = toUpper($name) 
+                WHERE toUpper(n.samaccountname) = toUpper($samaccountname) and toUpper(n.domainsid) = toUpper($domain_sid)
                 RETURN n LIMIT 1
                 """
 
@@ -231,6 +231,34 @@ class BloodHoundConnector:
                 WITH directContainer + indirectContainer AS AllContainers
                 UNWIND AllContainers AS n
                 RETURN n
+                """
+
+        return self.query(query, params)
+
+    def machines_affected_by_gpo(self, gpo_guid, domain_sid):
+        """
+        Get machines that are affected by a GPO
+        """
+        params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
+        query = """
+                MATCH (g)
+                WHERE toUpper(g.gpcpath) CONTAINS toUpper($gpo_guid) and toUpper(g.domainsid) = toUpper($domain_sid)
+                WITH g
+
+                // Collect machines from direct GPLink OU first
+                OPTIONAL MATCH (g:GPO)-[r1:GPLink]->(c)-[r2:Contains]->(t:Computer)
+                WHERE ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
+                WITH g, t as directMachines
+
+                // Collect machines from indirect GPLink OU
+                OPTIONAL MATCH p2 = (g:GPO)-[r3:GPLink]-()-[r4:Contains*1..]->(c)-[r5:Contains]->(t:Computer)
+                WHERE ((NONE(x IN TAIL(TAIL(NODES(p2))) WHERE x.blocksinheritance = true AND 'OU' IN LABELS(x))) OR r3.enforced = true)
+                AND ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
+
+                WITH directMachines, t AS indirectMachines
+                WITH collect(directMachines) + collect(indirectMachines) AS AllMachines
+                UNWIND AllMachines AS n
+                RETURN DISTINCT n
                 """
 
         return self.query(query, params)

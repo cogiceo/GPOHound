@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from importlib import resources
+from itertools import zip_longest
 
 import yaml
 
@@ -461,6 +462,20 @@ def print_analysed(analysed):
                         # Add values
                         if group.get("Members"):
                             table_group.add_row("Members", table_members)
+
+                        # Add values
+                        if group.get("Hijackable"):
+                            table_hijack = Table(show_lines=True, expand=True)
+                            table_hijack.add_column("20 chars or less", ratio=10, justify="center")
+                            table_hijack.add_column("More than 20 chars", ratio=8, justify="center")
+
+                            hijackable_list = list(
+                                zip_longest(group["Hijackable"]["lte_20"], group["Hijackable"]["gt_20"])
+                            )
+                            for row in hijackable_list:
+                                table_hijack.add_row(row[0], row[1])
+                            table_group.add_row("Hijackable", table_hijack)
+
                         table_group.add_row("References", group.get("references"))
 
                         node.add(table_group)

@@ -135,7 +135,9 @@ gpohound analysis --enrich
 
 - Detection of renamed built-in privileged local groups.
 
-- Detection of trustees added to privileged local groups using system-defined variables (e.g., %ComputerName%, %DomainName%) for possible `sAMAccountName` spoofing
+- Detection of trustees added to privileged local groups using "Preference Process Variables" (e.g., %ComputerName%, %DomainName%)
+
+- Detection of abusable trustees using `sAMAccountName` hijacking
 
 - Detection of any trustees added to privileged local groups:
 
