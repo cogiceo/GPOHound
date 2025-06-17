@@ -15,6 +15,7 @@ setup(
         "config.gpo_files_structure.ini",
         "config.gpo_files_structure.pol",
         "config.gpo_files_structure.xml",
+        "config.gpo_files_structure.aas",
         "gpohound",
         "gpohound.utils",
         "gpohound.parsers",
@@ -30,6 +31,7 @@ setup(
         "config.gpo_files_structure.ini": ["*.yaml"],
         "config.gpo_files_structure.pol": ["*.yaml"],
         "config.gpo_files_structure.xml": ["*.yaml"],
+        "config.gpo_files_structure.aas": ["*.yaml"],
     },
     install_requires=[
         "pyyaml>=6.0.2",

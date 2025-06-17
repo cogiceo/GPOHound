@@ -7,6 +7,7 @@ from gpohound.parsers.pol_files import POLParser
 from gpohound.parsers.inf_files import INFParser
 from gpohound.parsers.ini_files import INIParser
 from gpohound.parsers.csv_files import CSVParser
+from gpohound.parsers.aas_files import AASParser
 
 
 class GPOParser:
@@ -24,6 +25,7 @@ class GPOParser:
         self.infparser = INFParser()
         self.iniparser = INIParser()
         self.csvparser = CSVParser()
+        self.aasparser = AASParser()
 
         self.domain_policies_info = {}
         self.policies = {}
@@ -50,6 +52,14 @@ class GPOParser:
                     if script:
                         script["type"] = path[-2]
                         files_info.append(script)
+                elif (
+                    "{guid}.aas" in self.policy_files
+                    and file.lower().endswith(".aas")
+                    and path[-2].lower() == "applications"
+                    and path[-3].lower() in ["machine", "user"]
+                ):
+                    files_info.append(self.file_info(root, policy_path, file))
+
         return files_info
 
     def file_info(self, root, policy_path, file):
@@ -147,11 +157,18 @@ class GPOParser:
                 case ".pol":
                     configuration = self.polparser.parse(policy_file["full_path"], policy_file["policy_type"])
                 case ".inf":
-                    configuration = self.infparser.parse(policy_file["full_path"])
+                    configuration = self.infparser.parse(policy_file["full_path"], policy_file["name"])
                 case ".ini":
                     configuration = self.iniparser.parse(policy_file["full_path"])
                 case ".csv":
                     configuration = self.csvparser.parse(policy_file["full_path"])
+                case ".aas":
+                    configuration = self.aasparser.parse(policy_file["full_path"], policy_file["name"])
+                    if configuration:
+                        results.setdefault(policy_file["policy_type"], {}).setdefault(
+                            "Application Advertise Script", {}
+                        ).update(configuration)
+                        continue
                 case _:
                     if policy_file.get("type") in self.scripts_folder:
                         try:
@@ -168,12 +185,8 @@ class GPOParser:
                             logging.debug("File not found : %s", error)
                             continue
 
-            if configuration and policy_file["policy_type"] == "Machine":
-                results.setdefault("Machine", {}).update(configuration)
-
-            elif configuration and policy_file["policy_type"] == "User":
-                results.setdefault("User", {}).update(configuration)
-
+            if configuration and policy_file["policy_type"] in ["Machine", "User"]:
+                results.setdefault(policy_file["policy_type"], {}).update(configuration)
             elif configuration:
                 results = configuration
 
