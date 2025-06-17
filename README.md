@@ -198,7 +198,7 @@ Default privileged trustees, as well as service accounts with SIDs starting with
 ### SYSVOL and LDAP
 
 - [x] [\[MS-GPAC\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPAC/) Audit Configuration Extension
-- [ ] [\[MS-GPCAP\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPCAP/) Central Access Policies Protocol Extension
+- [X] [\[MS-GPCAP\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPCAP/) Central Access Policies Protocol Extension
 - [x] [\[MS-GPEF\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPEF/) Encrypting File System Extension
 - [x] [\[MS-GPFAS\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPFAS/) Firewall and Advanced Security Data Structure
 - [ ] [\[MS-GPIE\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPIE/) Internet Explorer Maintenance Extension
@@ -209,10 +209,10 @@ Default privileged trustees, as well as service accounts with SIDs starting with
 - [x] [\[MS-GPREG\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPREG/) Registry Extension Encoding
 - [x] [\[MS-GPSB\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSB/) Security Protocol Extension
 - [x] [\[MS-GPSCR\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSCR/) Scripts Extension Encoding
-- [ ] [\[MS-GPSI\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSI/) Software Installation Protocol Extension
+- [X] [\[MS-GPSI\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSI/) Software Installation Protocol Extension
 
 
-## LDAP Only
+### LDAP Only
 
 - [\[MS-GPDPC\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPDPC/) Deployed Printer Connections Extension
 - [\[MS-GPFR\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPFR/) Folder Redirection Protocol Extension

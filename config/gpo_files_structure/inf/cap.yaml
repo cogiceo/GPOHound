@@ -1,0 +1,9 @@
+cap:
+  Version:
+    type : key-value
+    include:
+    attributes:
+      - Signature
+  CAPS:
+    type : string-list
+    include:

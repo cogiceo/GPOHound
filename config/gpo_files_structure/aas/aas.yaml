@@ -1,0 +1,7 @@
+aas:
+  include:
+  attributes:
+    - Product Key
+    - Product Name
+    - Launch Path
+    - Package Name

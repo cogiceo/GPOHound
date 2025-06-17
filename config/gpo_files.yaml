@@ -1,27 +1,29 @@
-gpt: GPT.ini
-gptemplate: GptTmpl.inf
-scripts : scripts.ini
-psscripts : PSscripts.ini
-eventscripts: gposcripts
-groups: Groups.xml
-registry.pol: registry.pol
-audit: audit.csv
-datasources: DataSources.xml
-devices: Devices.xml
-drives: Drives.xml
-env: EnvironmentVariables.xml
-files: Files.xml
-folderoptions: FolderOptions.xml
-folders: Folders.xml
-inifiles: IniFiles.xml
-internetsettings: InternetSettings.xml
-networkoptions: NetworkOptions.xml
-networkshares: NetworkShares.xml
-poweroptions: PowerOptions.xml
-printers: Printers.xml
-regional: RegionalOptions.xml
-registry: Registry.xml
-scheduledtasks: ScheduledTasks.xml
-services: Services.xml
-shortcuts: Shortcuts.xml
-startmenu: StartMenuTaskbar.xml
+gpt: "GPT.ini"
+gptemplate: "GptTmpl.inf"
+scripts : "scripts.ini"
+psscripts : "PSscripts.ini"
+eventscripts: "gposcripts"
+groups: "Groups.xml"
+registry.pol: "registry.pol"
+audit: "audit.csv"
+datasources: "DataSources.xml"
+devices: "Devices.xml"
+drives: "Drives.xml"
+env: "EnvironmentVariables.xml"
+files: "Files.xml"
+folderoptions: "FolderOptions.xml"
+folders: "Folders.xml"
+inifiles: "IniFiles.xml"
+internetsettings: "InternetSettings.xml"
+networkoptions: "NetworkOptions.xml"
+networkshares: "NetworkShares.xml"
+poweroptions: "PowerOptions.xml"
+printers: "Printers.xml"
+regional: "RegionalOptions.xml"
+registry: "Registry.xml"
+scheduledtasks: "ScheduledTasks.xml"
+services: "Services.xml"
+shortcuts: "Shortcuts.xml"
+startmenu: "StartMenuTaskbar.xml"
+cap: "cap.inf"
+aas: "{GUID}.aas"
