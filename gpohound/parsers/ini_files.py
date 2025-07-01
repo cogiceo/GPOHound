@@ -34,7 +34,7 @@ class INIParser:
     def _parse_gpt(self, file_path):
         """Parses GPT.ini based on the YAML configuration."""
         output = {}
-        ini_parser = configparser.ConfigParser(allow_no_value=True)
+        ini_parser = configparser.ConfigParser(allow_no_value=True, interpolation=None)
         with open(file_path, "r", encoding="utf-8", errors="replace") as ini_file:
             ini_lines = [
                 line for line in ini_file if line.strip() and not line.strip().startswith(("#", ";"))
@@ -56,7 +56,7 @@ class INIParser:
         """Parses Scripts.ini based on Microsoft's 2.2.2 Syntax."""
         valid_sections = ["Startup", "Shutdown", "Logon", "Logoff"]
 
-        ini_parser = configparser.ConfigParser(allow_no_value=True, delimiters=["="])
+        ini_parser = configparser.ConfigParser(allow_no_value=True, delimiters=["="], interpolation=None)
 
         with open(file_path, "r", encoding="utf-16le") as f:
             content = f.read().lstrip("\ufeff")  # Remove BOM if present
@@ -97,7 +97,7 @@ class INIParser:
             "ScriptsConfig",
         ]
 
-        ini_parser = configparser.ConfigParser(allow_no_value=True, delimiters=["="])
+        ini_parser = configparser.ConfigParser(allow_no_value=True, delimiters=["="], interpolation=None)
 
         with open(file_path, "r", encoding="utf-16le") as f:
             content = f.read().lstrip("\ufeff")  # Remove BOM if present
