@@ -180,7 +180,7 @@ class GPOParser:
                                 }
                             }
                         except UnicodeDecodeError as error:
-                            logging.debug("Could not decode file : %s", error)
+                            logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
                         except FileNotFoundError as error:
                             logging.debug("File not found : %s", error)
                             continue
