@@ -73,18 +73,55 @@ To visualize the relationships and properties added by `GPOHound`, you can impor
 
 ### Dumping SYSVOL
 
-Start by downloading the `SYSVOL` contents from the domain controller. You can do this using `smbclient` or other tools:
+Start by downloading the `SYSVOL` contents from the domain controller.
 
-```bash
-smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; mget *;"
-```
+#### Using `rsync`
 
-For a faster download, target only the GPOs :
+- Mount the `SYSVOL` share locally:
 
-```bash
-mkdir -p "$DOMAIN"/Policies && cd "$DOMAIN"/Policies
-smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; cd $DOMAIN/Policies/; mget {*};" && cd -
-```
+  ```bash
+  sudo mkdir -p /mnt/$DOMAIN/SYSVOL/
+  sudo mount -t cifs -o username=$USER,password=$PASS,domain=$DOMAIN,ro "//$DC_IP/SYSVOL" "/mnt/$DOMAIN/SYSVOL/"
+  ```
+
+- Download the full `SYSVOL`:
+
+  ```bash
+  rsync -a -v --exclude="PolicyDefinitions" --update /mnt/$DOMAIN/SYSVOL .
+  ```
+
+- Download only the GPOs:
+
+  ```bash
+  mkdir "$DOMAIN"
+  rsync -a -v --exclude="PolicyDefinitions" --update /mnt/$DOMAIN/SYSVOL/*/Policies "$DOMAIN"
+  ```
+
+- Unmount the `SYSVOL` share when finished:
+
+  ```bash
+  sudo umount /mnt/$DOMAIN/SYSVOL/
+  ```
+
+> [!TIP]
+> `rsync` provides useful options such as `--dry-run`, `--max-size`, and especially `--update`, which skips files that are already up to date.
+> Check the documentation for additional tuning.
+
+#### Using `smbclient`
+
+- Download the full `SYSVOL`:
+
+  ```bash
+  smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; mget *;"
+  ```
+
+- Download only the GPOs:
+
+  ```bash
+  mkdir -p "$DOMAIN"/Policies && cd "$DOMAIN"/Policies
+  smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; cd $DOMAIN/Policies/; mget {*};" && cd -
+  ```
+
 
 ### BloodHound
 
