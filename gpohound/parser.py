@@ -151,39 +151,43 @@ class GPOParser:
             extension = policy_file["extension"].lower()
 
             # Parse file based on file extension
-            match extension:
-                case ".xml":
-                    configuration = self.xmlparser.parse(policy_file["full_path"])
-                case ".pol":
-                    configuration = self.polparser.parse(policy_file["full_path"], policy_file["policy_type"])
-                case ".inf":
-                    configuration = self.infparser.parse(policy_file["full_path"], policy_file["name"])
-                case ".ini":
-                    configuration = self.iniparser.parse(policy_file["full_path"])
-                case ".csv":
-                    configuration = self.csvparser.parse(policy_file["full_path"])
-                case ".aas":
-                    configuration = self.aasparser.parse(policy_file["full_path"], policy_file["name"])
-                    if configuration:
-                        results.setdefault(policy_file["policy_type"], {}).setdefault(
-                            "Application Advertise Script", {}
-                        ).update(configuration)
-                        continue
-                case _:
-                    if policy_file.get("type") in self.scripts_folder:
-                        try:
-                            raw = open(policy_file["full_path"], "r", encoding="utf-8").read()
-                            configuration = {
-                                policy_file.get("type"): {
-                                    "file": policy_file["relative_path"],
-                                    "content": raw,
-                                }
-                            }
-                        except UnicodeDecodeError as error:
-                            logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
-                        except FileNotFoundError as error:
-                            logging.debug("File not found : %s", error)
+            try:
+                match extension:
+                    case ".xml":
+                        configuration = self.xmlparser.parse(policy_file["full_path"])
+                    case ".pol":
+                        configuration = self.polparser.parse(policy_file["full_path"], policy_file["policy_type"])
+                    case ".inf":
+                        configuration = self.infparser.parse(policy_file["full_path"], policy_file["name"])
+                    case ".ini":
+                        configuration = self.iniparser.parse(policy_file["full_path"])
+                    case ".csv":
+                        configuration = self.csvparser.parse(policy_file["full_path"])
+                    case ".aas":
+                        configuration = self.aasparser.parse(policy_file["full_path"], policy_file["name"])
+                        if configuration:
+                            results.setdefault(policy_file["policy_type"], {}).setdefault(
+                                "Application Advertise Script", {}
+                            ).update(configuration)
                             continue
+                    case _:
+                        if policy_file.get("type") in self.scripts_folder:
+                            try:
+                                configuration = {
+                                    policy_file.get("type"): {
+                                        "file": policy_file["relative_path"],
+                                    }
+                                }
+                                raw = open(policy_file["full_path"], "r", encoding="utf-8").read()
+                                configuration[policy_file.get("type")].update({"content": raw})
+                            except UnicodeDecodeError as error:
+                                logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
+                            except FileNotFoundError as error:
+                                logging.debug("Executable file not found : %s", error)
+
+            except (UnicodeError, UnicodeDecodeError) as error:
+                logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
+                configuration = {policy_file["relative_path"]: "Could not decode this file"}
 
             if configuration and policy_file["policy_type"] in ["Machine", "User"]:
                 results.setdefault(policy_file["policy_type"], {}).update(configuration)

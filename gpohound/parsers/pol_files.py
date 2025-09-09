@@ -65,7 +65,6 @@ class POLParser:
 
         while len(body) > 0:
             if body[0:2] != b"[\x00":
-                print('Error: Entry does not start with "["')
                 break
             body = body[2:]
 
