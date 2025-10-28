@@ -313,31 +313,6 @@ class BloodHoundConnector:
                 """
         return self.query(query, params)
 
-    def add_edges_bhce(self, domain_sid, container_id, trustee_sid, group_sid):
-        """
-        Add relationships between a trustee, a local group and machines from a container for BloodHound CE
-        """
-        params = {
-            "container_id": container_id,
-            "trustee_sid": trustee_sid,
-            "domain_sid": domain_sid,
-            "group_sid": group_sid,
-        }
-
-        query = """
-                MATCH (t) 
-                WHERE toUpper(t.objectid) ENDS WITH toUpper($trustee_sid) AND toUpper(t.domainsid) = toUpper($domain_sid)
-                WITH t
-                MATCH (o {objectid: $container_id})-[r:Contains]->(c:Computer)
-                WITH t,c
-                MATCH (g:Group) WHERE toUpper(g.domainsid) = toUpper($domain_sid) and g.objectid ENDS WITH $group_sid 
-                WITH t,c,g
-                CALL apoc.merge.relationship(t, 'MemberOfLocalGroup', {}, {}, g) YIELD rel WITH t,c,g
-                CALL apoc.merge.relationship(g, 'LocalToComputer', {}, {}, c) YIELD rel
-                RETURN t,c,g
-                """
-        return self.query(query, params)
-
     def add_extra_property(self, container_id, property_key, property_value):
         """
         Add property to a machine in a container
