@@ -313,6 +313,41 @@ class BloodHoundConnector:
                 """
         return self.query(query, params)
 
+    def add_edges_bhce(self, domain_sid, container_id, trustee_sid, group_sid, group_name):
+        """
+        Add relationships between a trustee, a local group and machines from a container for BloodHound CE
+
+        The naming follows SharpHound's convention: "GROUPNAME@COMPUTERNAME" in uppercase.
+        Each computer gets its own local groups with objectid format: COMPUTER_SID-GROUP_RID    
+        """
+        # Extract the RID from the group SID (e.g., "544" from "S-1-5-32-544") so we can create a new group below
+        group_rid = group_sid.split('-')[-1]
+
+        params = {
+            "container_id": container_id,
+            "trustee_sid": trustee_sid,
+            "domain_sid": domain_sid,
+            "group_rid": group_rid,
+            "group_name": group_name.upper() if group_name else f"RID-{group_rid}",
+        }
+
+        query = """
+                MATCH (t)
+                WHERE toUpper(t.objectid) ENDS WITH toUpper($trustee_sid) AND toUpper(t.domainsid) = toUpper($domain_sid)
+                WITH t
+                MATCH (o {objectid: $container_id})-[r:Contains]->(c:Computer)
+                WITH t, c, toUpper(c.objectid + '-' + $group_rid) AS local_group_id
+                MERGE (g:Group {objectid: local_group_id})
+                ON CREATE SET g.name = toUpper($group_name + '@' + c.name),
+                              g.domainsid = toUpper($domain_sid)
+                WITH t, c, g
+                CALL apoc.merge.relationship(t, 'MemberOfLocalGroup', {}, {}, g) YIELD rel AS rel1
+                WITH t, c, g
+                CALL apoc.merge.relationship(g, 'LocalToComputer', {}, {}, c) YIELD rel AS rel2
+                RETURN t, c, g
+                """
+        return self.query(query, params)
+
     def add_extra_property(self, container_id, property_key, property_value):
         """
         Add property to a machine in a container
