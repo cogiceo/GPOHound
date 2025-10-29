@@ -38,6 +38,6 @@ S-1-5-32-556:
   name : "Network Configuration Operators"
   sid : "S-1-5-32-556"
   edge : "CanPrivEsc"
-  edge_reference: "https://birkep.github.io/posts/Windows-LPE/?s=03#network-configuration-operators"
+  edge_reference: "https://github.com/rapid7/metasploit-framework/pull/20044"
 
   
