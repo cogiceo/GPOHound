@@ -61,6 +61,16 @@
             ]
         },
         {
+            "name": "Local Group Memberships",
+            "category": "GPOHound",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=()-[:MemberOfLocalGroup]->()-[:LocalToComputer]->() RETURN p"
+                }
+            ]
+        },
+        {
             "name": "Find Computers where SMB Signing is not Required",
             "category": "GPOHound",
             "queryList": [

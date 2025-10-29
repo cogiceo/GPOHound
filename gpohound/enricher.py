@@ -1,3 +1,6 @@
+import logging
+
+
 class BloodHoundEnricher:
     """
     Enrich BloodHound data
@@ -19,6 +22,7 @@ class BloodHoundEnricher:
                 for group in analysed_settings:
 
                     group_sid = group.get("sid")
+                    group_name = group.get("name")
                     edge = group.get("edge")
 
                     if group_sid and edge:
@@ -31,6 +35,13 @@ class BloodHoundEnricher:
                                 outputs = self.bloodhound.add_edges(domain_sid, container_id, member_sid, edge)
 
                                 if outputs:
+                                    try:
+                                        self.bloodhound.add_edges_bhce(
+                                            domain_sid, container_id, member_sid, group_sid, group_name
+                                        )
+                                    except Exception as e:
+                                        logging.debug("Error adding edges persistently for BloodHound CE: %s", e)
+
                                     if not isinstance(outputs, list):
                                         results.setdefault("Groups", {}).setdefault(policy_type, {}).setdefault(
                                             edge, []
