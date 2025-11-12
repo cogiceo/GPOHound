@@ -1,5 +1,5 @@
 import os
-import codecs
+import logging
 import configparser
 from gpohound.utils.utils import load_yaml_config
 
@@ -32,46 +32,21 @@ class INIParser:
         else:
             return None
 
-    def _read_ini_file(self, file_path):
-        """Return the textual content of an INI file, handling common encodings."""
-        with open(file_path, "rb") as ini_file:
-            raw = ini_file.read()
-
-        if not raw:
-            return ""
-
-        bom_map = {
-            codecs.BOM_UTF8: "utf-8-sig",
-            codecs.BOM_UTF16_LE: "utf-16le",
-            codecs.BOM_UTF16_BE: "utf-16be",
-        }
-
-        for bom, encoding in bom_map.items():
-            if raw.startswith(bom):
-                return raw.decode(encoding).lstrip("\ufeff")
-
-        for encoding in ("utf-8", "utf-16le", "utf-16be"):
-            try:
-                decoded = raw.decode(encoding)
-            except UnicodeDecodeError:
-                continue
-
-            if "\x00" in decoded:
-                continue
-
-            return decoded.lstrip("\ufeff")
-
-        return raw.decode("utf-8", errors="replace").lstrip("\ufeff")
-
     def _parse_gpt(self, file_path):
         """Parses GPT.ini based on the YAML configuration."""
         output = {}
         ini_parser = configparser.ConfigParser(allow_no_value=True, interpolation=None)
-        content = self._read_ini_file(file_path)
-        ini_lines = [
-            line for line in content.splitlines() if line.strip() and not line.strip().startswith(("#", ";"))
-        ]  # Remove comments and empty lines
-        ini_parser.read_string("\n".join(ini_lines))
+
+        try:
+            with open(file_path, "r", encoding="utf-8-sig", errors="replace") as ini_file:
+                ini_lines = [
+                    line for line in ini_file if line.strip() and not line.strip().startswith(("#", ";"))
+                ]  # Remove comments and empty lines
+                ini_parser.read_string("".join(ini_lines))
+
+        except configparser.MissingSectionHeaderError as error:
+            logging.debug("Could not read INI file %s: %s", file_path, error)
+            return {"GPT.ini": "Could not parse this file"}
 
         for section, rules in self.config.items():
             if "include" in rules:
