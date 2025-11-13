@@ -1,4 +1,5 @@
 import os
+import logging
 import configparser
 from gpohound.utils.utils import load_yaml_config
 
@@ -35,11 +36,17 @@ class INIParser:
         """Parses GPT.ini based on the YAML configuration."""
         output = {}
         ini_parser = configparser.ConfigParser(allow_no_value=True, interpolation=None)
-        with open(file_path, "r", encoding="utf-8", errors="replace") as ini_file:
-            ini_lines = [
-                line for line in ini_file if line.strip() and not line.strip().startswith(("#", ";"))
-            ]  # Remove comments and empty lines
-            ini_parser.read_string("".join(ini_lines))
+
+        try:
+            with open(file_path, "r", encoding="utf-8-sig", errors="replace") as ini_file:
+                ini_lines = [
+                    line for line in ini_file if line.strip() and not line.strip().startswith(("#", ";"))
+                ]  # Remove comments and empty lines
+                ini_parser.read_string("".join(ini_lines))
+
+        except configparser.MissingSectionHeaderError as error:
+            logging.debug("Could not read INI file %s: %s", file_path, error)
+            return {"GPT.ini": "Could not parse this file"}
 
         for section, rules in self.config.items():
             if "include" in rules:
