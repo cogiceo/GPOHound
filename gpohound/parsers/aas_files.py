@@ -105,7 +105,7 @@ class AASParser:
                 raw_output = {
                     "Product Key": product_info[0],
                     "Product Name": product_info[1],
-                    "Launch Path": source_list_publish[8],
+                    "Launch Path": source_list_publish[-1],
                     "Package Name": product_info[2],
                 }
                 output = {key: raw_output[key] for key in self.config["aas"]["attributes"] if key in raw_output}
