@@ -56,12 +56,24 @@ pipx install "git+https://github.com/cogiceo/GPOHound"
 
 
 ### Setup APOC for Neo4j
-You need to setup Neo4j APOC for BloodHound data enrichment. If you're using the standard Neo4j installation, you can enable APOC by copying the APOC `jar` file to the plugin folder and then restart Neo4j:
 
-```bash
-cp /var/lib/neo4j/labs/apoc-* /var/lib/neo4j/plugins/
-neo4j restart
-```
+You need to setup Neo4j APOC for BloodHound data enrichment:
+
+- If you're using the standard Neo4j installation, you can enable APOC by copying the APOC `jar` file to the plugin folder and then restart Neo4j:
+
+  ```bash
+  cp /var/lib/neo4j/labs/apoc-* /var/lib/neo4j/plugins/
+  neo4j restart
+  ```
+
+- If you are installing Neo4j with "Docker Compose", add the environment variable `NEO4J_PLUGINS=["apoc"]`:
+
+  ```yaml
+  neo4j:
+    image: neo4j:latest
+    environment:
+      - NEO4J_PLUGINS=["apoc"]
+  ```
 
 > For more details or alternate installation methods, refer to the official [APOC Documentation](https://neo4j.com/docs/apoc/current/installation/).
 
@@ -121,8 +133,7 @@ Start by downloading the `SYSVOL` contents from the domain controller.
   mkdir -p "$DOMAIN"/Policies && cd "$DOMAIN"/Policies
   smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; cd $DOMAIN/Policies/; mget {*};" && cd -
   ```
-
-
+  
 ### BloodHound
 
 To enable name resolution and data enrichment, you must collect BloodHound data using a collector such as `bloodhound.py` or `SharpHound.exe` and import the gathered data into the BloodHound interface.
