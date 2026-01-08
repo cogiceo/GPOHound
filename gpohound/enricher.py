@@ -1,5 +1,5 @@
 import logging
-
+from rich.progress import track
 
 class BloodHoundEnricher:
     """
@@ -9,97 +9,141 @@ class BloodHoundEnricher:
     def __init__(self, bloodhound_connector):
         self.bloodhound = bloodhound_connector
 
-    def enrich(self, container_id, analysed_gpo, domain_sid):
+    def enrich(self, analyses, domain, domain_sid, ingestor):
         """
-        Enrich BloodHound with the interesting settings found in a analaysed GPOs
+        Apply found vulnerabilies to containers trustees
         """
-        results = {}
 
-        if "Groups" in analysed_gpo:
+        output_enrichment = {"Memberships": {}, "Privilege Rights": {}, "Properties": {}}
+        
+        # Iterates over GPOs
+        for data in track(analyses.values(), description=f"Enriching BloodHound with GPOs from {domain}", transient=True,):
+            analysed_gpo = data["analysis"]
+            container_ids = data["affected"]
 
-            for policy_type, analysed_settings in analysed_gpo["Groups"].items():
+            # Applies local group memberships to computers
+            if "Memberships" in analysed_gpo:
 
-                for group in analysed_settings:
+                for analysed_settings in analysed_gpo["Memberships"].values():
 
-                    group_sid = group.get("sid")
-                    group_name = group.get("name")
-                    edge = group.get("edge")
+                    for group in analysed_settings:
 
-                    if group_sid and edge:
-                        for member in group.get("Members", []):
+                        group_sid = group.get("sid")
+                        group_name = group.get("name")
+                        edge = group.get("edge")
 
-                            member_sid = member.get("sid")
-                            if member_sid:
+                        if group_sid and edge:
 
-                                # Try to add new relationship between the members of the groups and the machines in the container
-                                outputs = self.bloodhound.add_edges(domain_sid, container_id, member_sid, edge)
+                            if "Members" in group:
+
+                                trustees_sid = []
+                                for member in group["Members"]:
+                                    sid = member.get("sid")
+                                    if sid:
+                                        trustees_sid.append(sid.upper())
+
+                                # Try to add new relationship between the members of the groups and the machines in the containers
+                                outputs = self.bloodhound.add_edges(domain_sid, container_ids, trustees_sid, edge)
 
                                 if outputs:
-                                    try:
-                                        self.bloodhound.add_edges_bhce(
-                                            domain_sid, container_id, member_sid, group_sid, group_name
-                                        )
-                                    except Exception as e:
-                                        logging.debug("Error adding edges persistently for BloodHound CE: %s", e)
+                                    if ingestor == "bh-ce":
+                                        try:
+                                            self.bloodhound.add_edges_bhce(
+                                                domain_sid, container_ids, trustees_sid, group_sid, group_name
+                                            )
+                                        except Exception as e:
+                                            logging.debug("Error adding edges persistently for BloodHound CE: %s", e)
 
                                     if not isinstance(outputs, list):
-                                        results.setdefault("Groups", {}).setdefault(policy_type, {}).setdefault(
-                                            edge, []
-                                        ).append(f'{outputs["t"]["name"]} -> {outputs["c"]["name"]}')
-                                    else:
-                                        for output in outputs:
-                                            results.setdefault("Groups", {}).setdefault(policy_type, {}).setdefault(
-                                                edge, []
-                                            ).append(f'{output["t"]["name"]} -> {output["c"]["name"]}')
+                                        outputs = [outputs]
 
-        if "Registry" in analysed_gpo:
+                                    for output in outputs:
+                                        computer_name = output["c"]["samaccountname"]
+                                        trustee_name = output["t"]["samaccountname"]
+                                        output_enrichment["Memberships"].setdefault(group_name, {}).setdefault(
+                                            trustee_name, set()
+                                        ).add(computer_name)
 
-            for policy_type, analysed_settings in analysed_gpo["Registry"].items():
+                            if "EnvMembers" in group:
+                                for entry in group["EnvMembers"]:
+                                    if not entry["computer_name"] in output_enrichment["Memberships"].get(
+                                        group_name, {}
+                                    ).get(entry["name"], set()):
+                                        output = self.bloodhound.add_edge(
+                                            domain_sid, entry["sid"], entry["computer_sid"], edge
+                                        )
 
-                for registry in analysed_settings:
-                    bloodhound_property = registry.get("bloodhound_property")
+                                        if output:
+                                            if ingestor == "bh-ce":
+                                                try:
+                                                    self.bloodhound.add_edge_bhce(
+                                                        domain_sid,
+                                                        entry["sid"],
+                                                        entry["computer_sid"],
+                                                        group_sid,
+                                                        group_name,
+                                                    )
+                                                except Exception as e:
+                                                    logging.debug(
+                                                        "Error adding edges persistently for BloodHound CE: %s", e
+                                                    )
 
-                    if bloodhound_property:
+                                            computer_name = output["c"]["samaccountname"]
+                                            trustee_name = output["t"]["samaccountname"]
+                                            output_enrichment["Memberships"].setdefault(group_name, {}).setdefault(
+                                                trustee_name, set()
+                                            ).add(computer_name)
 
-                        # Try to add new property to the machines in the container
-                        ((key, value),) = bloodhound_property.items()
-                        outputs = self.bloodhound.add_extra_property(container_id, key, value)
+            # Adds interesting properties to computers
+            if "Registry" in analysed_gpo:
+                for analysed_settings in analysed_gpo["Registry"].values():
 
-                        if outputs:
-                            if not isinstance(outputs, list):
-                                results.setdefault("Registry", {}).setdefault(policy_type, {}).setdefault(
-                                    f"{key} is {value}", []
-                                ).append(f'{outputs["n"]["name"]}')
-                            else:
-                                for output in outputs:
-                                    results.setdefault("Registry", {}).setdefault(policy_type, {}).setdefault(
-                                        f"{key} is {value}", []
-                                    ).append(f'{output["n"]["name"]}')
+                    for registry in analysed_settings:
+                        bloodhound_property = registry.get("bloodhound_property")
 
-        if "Privilege Rights" in analysed_gpo:
+                        if bloodhound_property:
 
-            for policy_type, analysed_settings in analysed_gpo["Privilege Rights"].items():
-
-                for privilege in analysed_settings.values():
-                    edge = privilege.get("edge")
-
-                    for trustee in privilege.get("trustees", []):
-                        trustee_sid = trustee.get("sid")
-
-                        if trustee_sid:
-
-                            # Try to add new relationship between the privileged trustee and the machines in the container
-                            outputs = self.bloodhound.add_edges(domain_sid, container_id, trustee_sid, edge)
+                            # Try to add new property to the machines in the containers
+                            ((key, value),) = bloodhound_property.items()
+                            outputs = self.bloodhound.add_extra_property(container_ids, key, value)
 
                             if outputs:
                                 if not isinstance(outputs, list):
-                                    results.setdefault("Privilege Rights", {}).setdefault(policy_type, {}).setdefault(
-                                        edge, []
-                                    ).append(f'{outputs["t"]["name"]} -> {outputs["c"]["name"]}')
-                                else:
-                                    for output in outputs:
-                                        results.setdefault("Privilege Rights", {}).setdefault(
-                                            policy_type, {}
-                                        ).setdefault(edge, []).append(f'{output["t"]["name"]} -> {output["c"]["name"]}')
+                                    outputs = [outputs]
 
-        return results
+                                for output in outputs:
+                                    computer_name = output["n"]["samaccountname"]
+                                    output_enrichment.setdefault("Properties", {}).setdefault((key, value), set()).add(
+                                        computer_name
+                                    )
+
+            # Adds relationships to computers where trustees can escalate priviliges
+            if "Privilege Rights" in analysed_gpo:
+                for analysed_settings in analysed_gpo["Privilege Rights"].values():
+
+                    for privilege, entry in analysed_settings.items():
+                        edge = entry.get("edge")
+
+                        trustees_sid = []
+                        for trustee in entry["trustees"]:
+                            sid = trustee.get("sid")
+                            if sid:
+                                trustees_sid.append(sid.upper())
+
+                        if trustees_sid:
+
+                            # Try to add new relationship between the privileged trustee and the machines in the container
+                            outputs = self.bloodhound.add_edges(domain_sid, container_ids, trustees_sid, edge)
+
+                            if not isinstance(outputs, list):
+                                outputs = [outputs]
+
+                            for output in outputs:
+                                for output in outputs:
+                                    computer_name = output["c"]["samaccountname"]
+                                    trustee_name = output["t"]["samaccountname"]
+                                    output_enrichment["Privilege Rights"].setdefault(privilege, {}).setdefault(
+                                        trustee_name, set()
+                                    ).add(computer_name)
+
+        return output_enrichment

@@ -98,6 +98,16 @@ class ActiveDirectoryUtils:
                 return node["n"]["objectid"]
         return None
 
+    def get_all_samaccountnames(self):
+        """
+        Get all samaccountnames of any domain
+        """
+        if self.bloodhound.connection:
+            nodes = self.bloodhound.all_samaccountnames()
+            if nodes:
+                return self.nodes_to_dict(nodes)
+        return None
+
     def netbios_to_domain(self, netbios_name):
         """
         Netbios name to a domain name
@@ -116,10 +126,13 @@ class ActiveDirectoryUtils:
 
             elif len(domains) == 1:
                 domain_name = domains[0]["name"].lower()
-                confirm_domain = Confirm.ask(
-                    f"[bold][underline]Is [red]{netbios_name}[/red] the NetBIOS name of [green]{domain_name}[/green][/underline][/bold]",
-                    default=False,
-                )
+
+                confirm_domain = False
+                if not netbios_name.upper() in ["NT SERVICE", "NT AUTHORITY"]:
+                    confirm_domain = Confirm.ask(
+                        f"[bold][underline]Is [red]{netbios_name}[/red] the NetBIOS name of [green]{domain_name}[/green][/underline][/bold]",
+                        default=True
+                    )
 
                 if confirm_domain:
                     self.netbios_names.update({netbios_name: domain_name})
@@ -323,6 +336,18 @@ class ActiveDirectoryUtils:
 
         if self.bloodhound.connection:
             results = self.bloodhound.containers_affected_by_gpo(gpo_guid, domain_sid)
+            if results:
+                return self.nodes_to_dict(results)
+
+        return None
+
+    def get_machines_in_container(self, container_id, domain_sid):
+        """
+        Get machines in a container
+        """
+
+        if self.bloodhound.connection:
+            results = self.bloodhound.machines_in_container(container_id, domain_sid)
             if results:
                 return self.nodes_to_dict(results)
 

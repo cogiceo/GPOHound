@@ -33,7 +33,7 @@ class GPOAnalyser:
             if not objects or "group" in objects:
                 group_output = self.group_analyser.analyse(domain_sid, gpo_guid, proccessed_gpo)
                 if group_output:
-                    output["Groups"] = group_output
+                    output["Memberships"] = group_output
 
             if not objects or "registry" in objects:
                 registry_output = self.registry_analyser.analyse(proccessed_gpo)

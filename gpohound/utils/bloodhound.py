@@ -11,18 +11,33 @@ class BloodHoundConnector:
     """
 
     def __init__(self, host=None, user=None, password=None, port=None):
-        self.uri = f"{host}:{port}"
+        self.uri = f"bolt://{host}:{port}"
         self.user = user
         self.password = password
-        self.driver = None
-        self.connection = bool(self.query("RETURN 1"))
         self.apoc = None
 
-        if self.connection:
+        try:
+            # Create driver
+            self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+
+            # Test connection
+            self.connection = bool(self.query("RETURN 1"))
+
+            # Check if APOC is available
             try:
                 self.apoc = bool(self.query("RETURN apoc.version()"))
             except CypherSyntaxError as error:
-                logging.debug("Unable to use the APOC plugin : %s", error)
+                logging.debug("APOC plugin not available: %s", error)
+                self.apoc = False
+
+        except ServiceUnavailable as error:
+            logging.debug("Unable to connect to Neo4j instance: %s", error)
+            self.connection = False
+            self.driver = None
+        except AuthError as error:
+            logging.debug("Could not authenticate to Neo4j database: %s", error)
+            self.connection = False
+            self.driver = None
 
     def query(self, query_str, params=None):
         """
@@ -32,32 +47,20 @@ class BloodHoundConnector:
         if params is None:
             params = {}
 
-        try:
-            self.driver = GraphDatabase.driver(f"bolt://{self.uri}", auth=(self.user, self.password))
+        with self.driver.session() as session:
+            result = session.run(query_str, params)
+            result_data = [record for record in result]
 
-            with self.driver.session() as session:
+            if result_data:
+                if len(result_data) == 1:
+                    return result_data[0]
+                else:
+                    return result_data
+        return None
 
-                result = session.run(query_str, params)
-                result_data = [record for record in result]
-
-                if result_data:
-                    if len(result_data) == 1:
-                        return result_data[0]
-                    else:
-                        return result_data
-
-            return None
-
-        except ServiceUnavailable as error:
-            logging.debug("Unable to connect to Neo4j instance : %s", error)
-            return None
-        except AuthError as error:
-            logging.debug("Could not authenticate to Neo4j database: %s", error)
-            return None
-
-        finally:
-            if self.driver:
-                self.driver.close()
+    def close(self):
+        if self.driver:
+            self.driver.close()
 
     def find_domains(self):
         """
@@ -96,16 +99,30 @@ class BloodHoundConnector:
 
     def find_by_samaccountname(self, samaccountname, domain_sid):
         """
-        Find a GPO with his GUID and domain SID
+        Find an object with a samaccountname
         """
         params = {"samaccountname": samaccountname, "domain_sid": domain_sid}
         query = """
-                MATCH (n) 
-                WHERE toUpper(n.samaccountname) = toUpper($samaccountname) and toUpper(n.domainsid) = toUpper($domain_sid)
+                MATCH (n)
+                WHERE ANY(label IN labels(n) WHERE label IN ['User', 'Group', 'Computer'])
+                AND toUpper(n.samaccountname) = toUpper($samaccountname) and toUpper(n.domainsid) = toUpper($domain_sid)
                 RETURN n LIMIT 1
                 """
 
         return self.query(query, params)
+
+    def all_samaccountnames(self):
+        """
+        Return all the sAMAccountName
+        """
+        query = """
+                MATCH (n)
+                WHERE ANY(label IN labels(n) WHERE label IN ['User', 'Group', 'Computer'])
+                AND n.samaccountname IS NOT NULL 
+                RETURN n {.samaccountname, .objectid } AS n
+                """
+
+        return self.query(query)
 
     def find_by_objectid(self, objectid):
         """
@@ -124,11 +141,11 @@ class BloodHoundConnector:
         """
         Find a container with a attribut of the container
         """
-        params = {"target": target}
+        params = {"target": target.upper()}
         query = """
                 MATCH (n)
-                WHERE (toUpper(n.distinguishedname) = toUpper($target) OR toUpper(n.objectid) = toUpper($target))
-                AND ANY(label IN labels(n) WHERE label IN ['Container', 'Domain', 'OU'])
+                WHERE ANY(label IN labels(n) WHERE label IN ['Container', 'Domain', 'OU'])
+                AND (toUpper(n.distinguishedname) = $target OR toUpper(n.objectid) = $target) 
                 RETURN n LIMIT 1
                 """
 
@@ -138,12 +155,12 @@ class BloodHoundConnector:
         """
         Find the container of a trustee
         """
-        params = {"target": target}
+        params = {"target": target.upper()}
         query = """
                 MATCH (n)-[r1:Contains]->(t)
-                WHERE (toUpper(t.distinguishedname) = toUpper($target) OR toUpper(t.objectid) = toUpper($target) OR toUpper(t.name) = toUpper($target))
-                AND ANY(label IN labels(t) WHERE label IN ['User', 'Computer'])
+                WHERE ANY(label IN labels(t) WHERE label IN ['User', 'Computer'])
                 AND ANY(label IN labels(n) WHERE label IN ['Container', 'Domain', 'OU'])
+                AND (toUpper(t.distinguishedname) = $target OR toUpper(t.objectid) = $target OR toUpper(t.name) = $target)
                 RETURN n LIMIT 1
                 """
 
@@ -210,7 +227,7 @@ class BloodHoundConnector:
         """
         params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
         query = """
-                MATCH (g)
+                MATCH (g:GPO)
                 WHERE toUpper(g.gpcpath) CONTAINS toUpper($gpo_guid) and toUpper(g.domainsid) = toUpper($domain_sid)
                 WITH g
 
@@ -241,7 +258,7 @@ class BloodHoundConnector:
         """
         params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
         query = """
-                MATCH (g)
+                MATCH (g:GPO)
                 WHERE toUpper(g.gpcpath) CONTAINS toUpper($gpo_guid) and toUpper(g.domainsid) = toUpper($domain_sid)
                 WITH g
 
@@ -259,6 +276,20 @@ class BloodHoundConnector:
                 WITH collect(directMachines) + collect(indirectMachines) AS AllMachines
                 UNWIND AllMachines AS n
                 RETURN DISTINCT n
+                """
+
+        return self.query(query, params)
+
+    def machines_in_container(self, objectid, domain_sid):
+        """
+        Get machines that are affected by a GPO
+        """
+        params = {"objectid": objectid, "domain_sid": domain_sid}
+        query = """
+                MATCH (c)-[:Contains]->(n:Computer)
+                WHERE ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
+                AND toUpper(c.objectid) = toUpper($objectid) AND toUpper(c.domainsid) = toUpper($domain_sid)
+                RETURN n
                 """
 
         return self.query(query, params)
@@ -284,81 +315,168 @@ class BloodHoundConnector:
         params = {"domain_sid": domain_sid}
         query = """
                 MATCH (n)-[r:Contains]->(l) 
-                WHERE n.domainsid = $domain_sid 
-                AND ANY(label IN labels(n) WHERE label IN ['Container','OU', 'Domain'])
+                WHERE ANY(label IN labels(n) WHERE label IN ['Container','OU', 'Domain'])
                 AND ANY(label IN labels(l) WHERE label IN ['Computer','User'])
+                AND n.domainsid = $domain_sid 
                 RETURN DISTINCT n
                 """
         return self.query(query, params)
 
-    def add_edges(self, domain_sid, container_id, trustee_sid, edge):
+    def add_edge(self, domain_sid, trustee_sid, computer_objectid, edge):
+        """
+        Add a single edge between a trustee and a computer.
+        """
+
+        params = {
+            "trustee_sid": trustee_sid,
+            "domain_sid": domain_sid,
+            "computer_objectid": computer_objectid,
+            "edge": edge,
+        }
+
+        query = """
+                MATCH (t)
+                WHERE t.objectid IS NOT NULL
+                AND toUpper(t.objectid) = $trustee_sid
+                AND toUpper(t.domainsid) = $domain_sid
+                MATCH (c:Computer {objectid: $computer_objectid})
+                CALL apoc.merge.relationship(t, $edge, {gpohound:true}, {}, c) YIELD rel
+                RETURN t, c
+                """
+
+        return self.query(query, params)
+
+    def add_edges(self, domain_sid, container_ids, trustee_sids, edge):
         """
         Add relationship between a trustee and machines from a container
         """
         params = {
             "edge": edge,
-            "container_id": container_id,
-            "trustee_sid": trustee_sid,
-            "domain_sid": domain_sid,
+            "container_ids": container_ids,
+            "trustee_sids": trustee_sids,
+            "domain_sid": domain_sid.upper(),
         }
 
         query = """
-                MATCH (t) 
-                WHERE toUpper(t.objectid) ENDS WITH toUpper($trustee_sid) AND toUpper(t.domainsid) = toUpper($domain_sid)
-                WITH t
-                MATCH (o {objectid: $container_id})-[r:Contains]->(c:Computer) 
-                WITH t,c
-                CALL apoc.merge.relationship(t, $edge, {gpohound:true} ,{}, c) YIELD rel WITH t,c
-                RETURN t,c
+                // Collect all computers from all containers
+                UNWIND $container_ids AS container_id
+                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
+                WITH collect(DISTINCT c) AS computers
+
+                // Match all trustees
+                MATCH (t)
+                WHERE t.objectid IS NOT NULL
+                AND ANY(sid IN $trustee_sids WHERE toUpper(t.objectid) ENDS WITH sid)
+                AND toUpper(t.domainsid) = $domain_sid
+                
+                // Merge relationships
+                UNWIND computers AS c
+                CALL apoc.merge.relationship(t, $edge, {gpohound: true}, {}, c) YIELD rel
+
+                RETURN t, c
                 """
+
         return self.query(query, params)
 
-    def add_edges_bhce(self, domain_sid, container_id, trustee_sid, group_sid, group_name):
+    def add_edge_bhce(self, domain_sid, trustee_sid, computer_objectid, group_sid, group_name):
+        """
+        Add a single trustee to a single computer's local group (BloodHound CE style).
+        """
+        trustee_sid = trustee_sid.upper()
+        domain_sid = domain_sid.upper()
+        group_name = group_name.upper()
+
+        params = {
+            "trustee_sid": trustee_sid,
+            "domain_sid": domain_sid,
+            "computer_objectid": computer_objectid,
+            "group_rid": group_sid.split("-")[-1],
+            "group_name": group_name,
+        }
+
+        query = """
+                // Match the trustee
+                MATCH (t)
+                WHERE t.objectid IS NOT NULL
+                AND toUpper(t.objectid) = $trustee_sid
+                AND toUpper(t.domainsid) = $domain_sid
+
+                // Match the computer
+                MATCH (c:Computer {objectid: $computer_objectid})
+
+                // Merge the local group
+                MERGE (g:ADLocalGroup {objectid: toUpper(c.objectid + '-' + $group_rid)})
+                ON CREATE SET g.name = $group_name + '@' + c.name
+
+                // Merge relationships
+                MERGE (t)-[:MemberOfLocalGroup]->(g)
+                MERGE (g)-[:LocalToComputer]->(c)
+
+                RETURN t, c
+                """
+
+        return self.query(query, params)
+
+    def add_edges_bhce(self, domain_sid, container_ids, trustee_sids, group_sid, group_name):
         """
         Add relationships between a trustee, a local group and machines from a container for BloodHound CE.
         The naming follows SharpHound's convention: "GROUPNAME@COMPUTERNAME" in uppercase.
         Each computer has its own local groups, with "objectid" values in the format: COMPUTER_SID-GROUP_RID
         """
-        
+
         params = {
-            "container_id": container_id,
-            "trustee_sid": trustee_sid,
-            "domain_sid": domain_sid,
+            "container_ids": container_ids,
+            "trustee_sids": trustee_sids,
+            "domain_sid": domain_sid.upper(),
             "group_rid": group_sid.split("-")[-1],
             "group_name": group_name.upper(),
         }
 
         query = """
+                // Expand all containers and collect computers
+                UNWIND $container_ids AS container_id
+                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
+                WITH collect(DISTINCT c) AS computers
+
+                // Match all trustees
                 MATCH (t)
-                WHERE toUpper(t.objectid) ENDS WITH toUpper($trustee_sid) AND toUpper(t.domainsid) = toUpper($domain_sid)
-                WITH t
-                MATCH (o {objectid: $container_id})-[r:Contains]->(c:Computer)
+                WHERE t.objectid IS NOT NULL
+                AND toUpper(t.objectid) IN $trustee_sids
+                AND toUpper(t.domainsid) = $domain_sid
+                UNWIND computers AS c
+                WITH t, c
+
+                // Local group per computer
                 WITH t, c, toUpper(c.objectid + '-' + $group_rid) AS local_group_id
                 MERGE (g:ADLocalGroup {objectid: local_group_id})
-                ON CREATE SET g.name = toUpper($group_name + '@' + c.name)
-                WITH t, c, g
+                ON CREATE SET g.name = $group_name + '@' + c.name
+                WITH t, g, c
+                
+                // Relationships
                 CALL apoc.merge.relationship(t, 'MemberOfLocalGroup', {}, {}, g) YIELD rel AS rel1
-                WITH t, c, g
                 CALL apoc.merge.relationship(g, 'LocalToComputer', {}, {}, c) YIELD rel AS rel2
-                RETURN t, c, g
+
+                RETURN t, c
                 """
         return self.query(query, params)
 
-    def add_extra_property(self, container_id, property_key, property_value):
+    def add_extra_property(self, container_ids, property_key, property_value):
         """
         Add property to a machine in a container
         """
 
         params = {
-            "container_id": container_id,
+            "container_ids": container_ids,
             "property_key": property_key,
             "property_value": property_value,
         }
 
         query = """
-                MATCH (o {objectid: $container_id})-[r:Contains]->(c:Computer) 
+                UNWIND $container_ids AS container_id
+                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
                 WITH c
-                CALL apoc.create.setProperty(c, $property_key, $property_value) YIELD node as n
+                CALL apoc.create.setProperty(c, $property_key, $property_value)
+                YIELD node AS n
                 RETURN n
                 """
         return self.query(query, params)

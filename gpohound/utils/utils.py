@@ -68,27 +68,6 @@ def override_configuration(file_name):
     return None
 
 
-############################### Dictionary operation ###############################
-
-
-def merge_nested_dicts(d1, d2):
-    """
-    Merge two Dictionaries and list merge nested list
-    """
-    result = d1.copy()
-    for key, value in d2.items():
-        if key in result:
-            if isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = merge_nested_dicts(result[key], value)
-            elif isinstance(result[key], list) and isinstance(value, list):
-                result[key].extend(value)
-            else:
-                result[key] = value  # Overwrite if not both dicts/lists
-        else:
-            result[key] = value
-    return result
-
-
 ############################### Find data functions ###############################
 
 
@@ -436,7 +415,7 @@ def print_analysed(analysed):
 
                         node.add(table_privilege)
 
-            elif key == "Groups":
+            elif key == "Memberships":
 
                 groups_node = parent.add("[bold blue]Groups [/bold blue]")
 
@@ -449,7 +428,7 @@ def print_analysed(analysed):
                         # Tables for members
                         table_members = Table(show_lines=True, expand=True)
                         table_members.add_column("SID", ratio=10, justify="center")
-                        table_members.add_column("Name", ratio=8, justify="center")
+                        table_members.add_column("Trustee", ratio=8, justify="center")
 
                         for member in group.get("Members", []):
                             table_members.add_row(member.get("sid"), member.get("name"))
@@ -462,6 +441,16 @@ def print_analysed(analysed):
                         # Add values
                         if group.get("Members"):
                             table_group.add_row("Members", table_members)
+
+                        if group.get("EnvMembers"):
+                            table_single = Table(show_lines=True, expand=True)
+                            table_single.add_column("SID", ratio=10, justify="center")
+                            table_single.add_column("Trustee and Computer", ratio=8, justify="center")
+
+                            for member in group.get("EnvMembers", []):
+                                table_single.add_row(member["sid"], f"{member['name']} on {member['computer_name']}")
+
+                            table_group.add_row("Env. Members", table_single)
 
                         # Add values
                         if group.get("Hijackable"):
@@ -517,5 +506,84 @@ def print_analysed(analysed):
 
     tree = Tree("[bold]GPO Analysis [/bold]")
     analysed_to_tree(analysed, tree, depth=0)
+    console = Console()
+    console.print(tree)
+
+
+def print_enriched(output_enrichment):
+    """
+    Print enrichement results
+    """
+
+    def enriched_to_tree(data, parent, depth=0):
+        for key, value in data.items():
+            if value:
+                if key == "Properties":
+                    properties_table = Table(show_lines=True, width=int(table_output_width() * 0.79))
+                    properties_table.add_column("Key", ratio=5, justify="center")
+                    properties_table.add_column("Value", ratio=5, justify="center")
+                    properties_table.add_column("Number of computers", ratio=4, justify="center")
+
+                    sorted_properties = dict(sorted(value.items(), key=lambda item: len(item[1]), reverse=True))
+                    for property, machines in sorted_properties.items():
+                        properties_table.add_row(property[0], str(property[1]), str(len(machines)))
+
+                    properties_node = parent.add("[bold blue]Properties [/bold blue]").add("[bold]Interesting properties added to computers [/bold]")
+                    properties_node.add(properties_table)
+
+                elif key == "Privilege Rights":
+                    privileges_node = parent.add("[bold blue]Privilege Rights [/bold blue]")
+                    for privilege, trustees in value.items():
+                        privilege_table = Table(show_lines=True, width=int(table_output_width() * 0.79))
+                        privilege_table.add_column("Trustee", ratio=10, justify="center")
+                        privilege_table.add_column("Number of computers", ratio=4, justify="center")
+
+                        sorted_trustees = dict(sorted(trustees.items(), key=lambda item: len(item[1]), reverse=True))
+                        for trustee, machines in sorted_trustees.items():
+                            privilege_table.add_row(trustee, str(len(machines)))
+
+                        privilege_node = privileges_node.add(
+                            f"[bold]Trustee(s) that can escalate privilieges with : {privilege} [/bold]"
+                        )
+                        privilege_node.add(privilege_table)
+
+                elif key == "Memberships":
+                    memberships_node = parent.add("[bold blue]Memberships [/bold blue]")
+
+                    for membership, trustees in value.items():
+
+                        membership_table = Table(show_lines=True, width=int(table_output_width() * 0.79))
+                        membership_table.add_column("Trustee", ratio=10, justify="center")
+                        membership_table.add_column("Number of computers", ratio=4, justify="center")
+
+                        sorted_trustees = dict(sorted(trustees.items(), key=lambda item: len(item[1]), reverse=True))
+                        for trustee, machines in sorted_trustees.items():
+                            membership_table.add_row(trustee, str(len(machines)))
+
+                        membership_node = memberships_node.add(
+                            f"[bold]Trustee(s) added to the local group : {membership} [/bold]"
+                        )
+                        membership_node.add(membership_table)
+
+                elif isinstance(value, list):
+                    list_tree = None
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            item_tree = parent.add(f"[bold blue]{key} {i+1} [/bold blue]")
+                            enriched_to_tree(item, item_tree, depth + 1)
+                        else:
+                            if not list_tree:
+                                list_tree = parent.add(f"[bold blue]{key} [/bold blue]")
+                            list_tree.add(f"[bold]{item} [/bold]")
+
+                elif isinstance(value, dict):
+                    if depth == 0:
+                        node = parent.add(f"[bold red]{key} [/bold red]")  # Domain Name
+                    else:
+                        node = parent.add(f"[bold blue]{key} [/bold blue]")  # Normal Key
+                    enriched_to_tree(value, node, depth + 1)
+
+    tree = Tree("[bold]Enrichement results [/bold]")
+    enriched_to_tree(output_enrichment, tree, depth=0)
     console = Console()
     console.print(tree)

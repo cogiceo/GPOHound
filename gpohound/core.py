@@ -8,16 +8,9 @@ from gpohound.processor import GPOProcessor
 from gpohound.analyser import GPOAnalyser
 from gpohound.enricher import BloodHoundEnricher
 
-from gpohound.utils.utils import (
-    search_keys_values,
-    print_dict_as_tree,
-    print_processed,
-    print_analysed,
-    merge_nested_dicts,
-)
+from gpohound.utils.utils import search_keys_values, print_dict_as_tree, print_processed, print_analysed, print_enriched
 from gpohound.utils.bloodhound import BloodHoundConnector
 from gpohound.utils.ad import ActiveDirectoryUtils
-
 
 class GPOHoundCore:
     """
@@ -141,7 +134,7 @@ class GPOHoundCore:
         guids=None,
         processed=False,
         affected=False,
-        enrich=False,
+        ingestor="",
         gpo_name=False,
         order=False,
         show=False,
@@ -158,12 +151,12 @@ class GPOHoundCore:
         """
 
         if not self.ad_utils.bloodhound.connection and (
-            affected or order or enrich or container or user or computer or gpo_name or show
+            affected or order or ingestor or container or user or computer or gpo_name or show
         ):
             logging.info("This command requires a working bloodhound connection")
             sys.exit()
 
-        if not self.ad_utils.bloodhound.apoc and enrich:
+        if not self.ad_utils.bloodhound.apoc and ingestor:
             logging.info(
                 "This command requires to have APOC installed for Neo4j. Check the GPOHound documentation for more information"
             )
@@ -270,7 +263,8 @@ class GPOHoundCore:
         else:
             # Iterates over domains
             for domain, gpos in self.gpo_parser.policies.items():
-                containers_to_enrich = {}
+
+                analyses = {}
 
                 domain_sid = self.ad_utils.domain_to_sid(domain)
                 if domains and domain not in domains:
@@ -284,10 +278,11 @@ class GPOHoundCore:
                     # Process the GPOs
                     proccessed_gpo = self.gpo_processor.process(gpo_settings, objects, domain_sid)
 
-                    # Analyse the GPOs settings
+                    # Proccessed settings output
                     if proccessed_gpo and processed:
                         output_proccessed.setdefault(domain, {}).setdefault(gpo_guid, {}).update(proccessed_gpo)
 
+                    # Analyse the GPOs settings
                     else:
                         analysis = self.gpo_analyser.analyse(
                             domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
@@ -296,33 +291,34 @@ class GPOHoundCore:
                         if analysis:
 
                             # Get container list affected by the GPO
-                            if (affected or enrich) and domain_sid:
+                            if (affected or ingestor) and domain_sid:
                                 found_containers = self.ad_utils.get_containers_affected_by_gpo(gpo_guid, domain_sid)
 
-                                if found_containers:
-                                    containers_dn = [
-                                        container.get("distinguishedname") for container in found_containers
-                                    ]
-
-                                    # Container list for enrichement
-                                    for container in found_containers:
-                                        containers_to_enrich[container.get("objectid")] = container
+                                if found_containers:    
+                                    # Get analysis data and affected containers for enrichement
+                                    if ingestor:
+                                        analyses[gpo_guid] = {
+                                            "analysis": analysis,
+                                            "affected": [container.get("objectid") for container in found_containers],
+                                        }
 
                                     # Add container list to processed GPO and vulnerability outputs
                                     if affected:
+                                        containers_dn = [
+                                            container.get("distinguishedname") for container in found_containers
+                                        ]
                                         output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).setdefault(
                                             "Affected Containers", []
                                         ).extend(containers_dn)
                                         output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(analysis)
+
                             else:
+                                # Analysis output to print
                                 output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(analysis)
 
                 # Enrich bloodhound with found vulnerabilities
-                if enrich and domain_sid and containers_to_enrich:
-                    enrichement = self.enrich(containers_to_enrich, domain, domain_sid, objects)
-
-                    if enrichement:
-                        output_enrichment.setdefault(domain, {}).update(enrichement)
+                if ingestor and domain_sid and analyses:
+                    output_enrichment[domain] = self.bloodhound_enricher.enrich(analyses, domain, domain_sid, ingestor)
 
         # Print processed settings
         if processed:
@@ -338,7 +334,7 @@ class GPOHoundCore:
                 print_processed(output_proccessed)
 
         # Print enrichement output
-        elif enrich:
+        elif ingestor:
             if not output_enrichment:
                 logging.info("No GPOs found to enrich BloodHound data...")
                 sys.exit()
@@ -346,7 +342,7 @@ class GPOHoundCore:
             if print_json:
                 print(json.dumps(output_enrichment, indent=4))
             else:
-                print_dict_as_tree("Enrichement Output", output_enrichment)
+                print_enriched(output_enrichment)
 
         # Print GPO settings in order
         elif show:
@@ -378,48 +374,3 @@ class GPOHoundCore:
         else:
             logging.info("No results were found for the specified settings...")
             sys.exit()
-
-    def enrich(self, containers, domain, domain_sid, objects):
-        """
-        Apply found vulnerabilies to containers trustees
-        """
-
-        output = {}
-
-        # Iterates over containers
-        for container_id, container in containers.items():
-
-            results = {}
-
-            ordered_gpos = self.ad_utils.container_inheritance(container_id)
-
-            if ordered_gpos:
-
-                for gpo in ordered_gpos:
-
-                    if "name" in gpo:
-                        gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
-
-                        if gpo_guid in self.gpo_parser.policies[domain]:
-                            gpo_settings = self.gpo_parser.policies[domain][gpo_guid]
-                            proccessed_gpo = self.gpo_processor.process(gpo_settings, objects, domain_sid)
-
-                            if proccessed_gpo:
-
-                                # Analyse GPOs
-                                analysis = self.gpo_analyser.analyse(
-                                    domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
-                                )
-
-                                if analysis:
-
-                                    # Enrich bloodhound data
-                                    result = self.bloodhound_enricher.enrich(container_id, analysis, domain_sid)
-
-                                    if result:
-                                        results = merge_nested_dicts(results, result)
-
-                if results:
-                    output.setdefault(container.get("distinguishedname"), {}).update(results)
-
-        return output
