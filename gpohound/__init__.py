@@ -112,6 +112,11 @@ def main():
         action="store_true",
         help="Augment BloodHound data with additional relationships/properties",
     )
+    analysis_parser.add_argument(
+        "--enrich-ce",
+        action="store_true",
+        help="Same as --enrich, but persists the groups relationships on BloodHound-CE (takes longer to run)",
+    )
 
     analysis_output = analysis.add_argument_group(title="Output options")
     analysis_output.add_argument("--json", action="store_true", help="Format output as JSON")
@@ -209,13 +214,22 @@ def main():
         )
 
     elif args.command == "analysis":
+        
+        # Bloodhound Ingestor
+        if args.enrich_ce:
+            ingestor = "bh-ce"
+        elif args.enrich:
+            ingestor = "bh-legacy"
+        else:
+            ingestor = ""
+        
         gpohound_core.analyser(
             args.sysvol_path,
             domains,
             args.guid,
             args.processed,
             args.affected,
-            args.enrich,
+            ingestor,
             args.gpo_name,
             args.order,
             args.show,
@@ -225,3 +239,6 @@ def main():
             args.user,
             args.json,
         )
+
+    if gpohound_core.bloodhound_connector.connection:
+        gpohound_core.bloodhound_connector.close()
