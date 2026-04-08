@@ -117,8 +117,7 @@ class ActiveDirectoryUtils:
             return self.netbios_names.get(netbios_name)
         elif "%" in netbios_name:
             return None
-        
-        if netbios_name in ["NT SERVICE", "NT AUTHORITY"]:
+        elif netbios_name in ["NT SERVICE", "NT AUTHORITY"]:
             self.netbios_names.update({netbios_name: None})
             return None
         else:
