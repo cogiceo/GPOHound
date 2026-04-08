@@ -117,7 +117,9 @@ class ActiveDirectoryUtils:
             return self.netbios_names.get(netbios_name)
         elif "%" in netbios_name:
             return None
-
+        elif netbios_name in ["NT SERVICE", "NT AUTHORITY"]:
+            self.netbios_names.update({netbios_name: None})
+            return None
         else:
             domains = self.get_domains()
 
@@ -127,12 +129,10 @@ class ActiveDirectoryUtils:
             elif len(domains) == 1:
                 domain_name = domains[0]["name"].lower()
 
-                confirm_domain = False
-                if not netbios_name.upper() in ["NT SERVICE", "NT AUTHORITY"]:
-                    confirm_domain = Confirm.ask(
-                        f"[bold][underline]Is [red]{netbios_name}[/red] the NetBIOS name of [green]{domain_name}[/green][/underline][/bold]",
-                        default=True
-                    )
+                confirm_domain = Confirm.ask(
+                    f"[bold][underline]Is [red]{netbios_name}[/red] the NetBIOS name of [green]{domain_name}[/green][/underline][/bold]",
+                    default=True
+                )
 
                 if confirm_domain:
                     self.netbios_names.update({netbios_name: domain_name})
