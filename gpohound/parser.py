@@ -40,7 +40,7 @@ class GPOParser:
         # Walk through the directories to find files
         for root, _, files in os.walk(policy_path):
             for file in files:
-                path = [items for items in os.path.join(root, file).split(os.sep)]
+                path = [items for items in os.path.join(root, file).replace("\\", "/").split("/")]
                 if file.lower() in self.policy_files:
                     files_info.append(self.file_info(root, policy_path, file))
                 elif (
@@ -68,9 +68,9 @@ class GPOParser:
         """
 
         # Retrive information on the file
-        full_path = os.path.join(root, file)
-        relative_path = full_path.replace(policy_path, "")
-        relative_path_list = [items.lower() for items in relative_path.split(os.sep)]
+        full_path = os.path.join(root, file).replace("\\", "/")
+        relative_path = full_path.replace(policy_path, "").replace("\\", "/")
+        relative_path_list = [items.lower() for items in relative_path.split("/")]
         policy_type = ""
 
         if "machine" in relative_path_list:
@@ -106,7 +106,7 @@ class GPOParser:
         for dirpath, dirnames, _ in os.walk(sysvol_path):
 
             for dirname in dirnames:
-                full_path = os.path.join(dirpath, dirname)
+                full_path = os.path.join(dirpath, dirname).replace("\\", "/")
                 match_path = pattern.search(full_path)
 
                 # Get file path that match the pattern
