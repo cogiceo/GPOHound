@@ -23,7 +23,7 @@ class GPOProcessor:
         self.processors["registry.pol"] = POLRegistryProcessor().process
         self.processors["Privilege Rights"] = PrivilegeRightsProcessor(ad_utils).process
 
-    def process(self, gpo_settings, objects, domain_sid):
+    def process(self, gpo_settings, domain_sid, objects=None):
         """
         Process GPO and group settings that impact the same objects
         """

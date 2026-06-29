@@ -1,5 +1,6 @@
-import os
 import xml.etree.ElementTree as ET
+
+from pathlib import Path
 from gpohound.utils.utils import load_yaml_config
 
 
@@ -90,7 +91,7 @@ class XMLParser:
         if not parsed_policy:
             return None
 
-        filename = os.path.basename(xml_file)
+        filename = Path(xml_file).name
         policy_data = {filename: parsed_policy}
 
         return policy_data

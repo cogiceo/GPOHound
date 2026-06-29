@@ -17,7 +17,7 @@ class GPOAnalyser:
         self.registry_analyser = RegistryAnalyser()
         self.privilege_rights_analyser = PrivilegeRightsAnalyser(ad_utils)
 
-    def analyse(self, domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects):
+    def analyse(self, domain_sid, gpo_guid, gpo_settings, processed_gpo, objects=None):
         """
         Try to find interesting settings in GPO settings:
             - Sensitive group
@@ -28,20 +28,20 @@ class GPOAnalyser:
 
         output = {}
 
-        if proccessed_gpo:
+        if processed_gpo:
 
             if not objects or "group" in objects:
-                group_output = self.group_analyser.analyse(domain_sid, gpo_guid, proccessed_gpo)
+                group_output = self.group_analyser.analyse(domain_sid, gpo_guid, processed_gpo)
                 if group_output:
                     output["Memberships"] = group_output
 
             if not objects or "registry" in objects:
-                registry_output = self.registry_analyser.analyse(proccessed_gpo)
+                registry_output = self.registry_analyser.analyse(processed_gpo)
                 if registry_output:
                     output["Registry"] = registry_output
 
             if not objects or "privilege" in objects:
-                privilege_rights_output = self.privilege_rights_analyser.analyse(proccessed_gpo)
+                privilege_rights_output = self.privilege_rights_analyser.analyse(processed_gpo)
                 if privilege_rights_output:
                     output["Privilege Rights"] = privilege_rights_output
 

@@ -104,5 +104,5 @@ class RegistryAnalyser:
             return plaintext
 
         except ValueError as error:
-            logging.debug("Error decrypting VNC password : %s", error)
+            logging.debug(f"Error decrypting VNC password : {error}")
             return None

@@ -7,24 +7,24 @@ class BloodHoundEnricher:
     Enrich BloodHound data
     """
 
-    def __init__(self, bloodhound_connector):
-        self.bloodhound = bloodhound_connector
+    def __init__(self, bloodhound):
+        self.bloodhound = bloodhound
 
     def enrich(self, analyses, domain, domain_sid, ingestor):
         """
-        Apply found vulnerabilies to containers trustees
+        Apply found vulnerabilies to ous trustees
         """
 
         output_enrichment = {"Memberships": {}, "Privilege Rights": {}, "Properties": {}}
 
         # Iterates over GPOs
         for data in track(
-            analyses.values(),
+            analyses,
             description=f"Enriching BloodHound with GPOs from {domain}",
             transient=True,
         ):
             analysed_gpo = data["analysis"]
-            container_ids = data["affected"]
+            ou_ids = data["affected"]
 
             # Applies local group memberships to computers
             if "Memberships" in analysed_gpo:
@@ -47,17 +47,17 @@ class BloodHoundEnricher:
                                     if sid:
                                         trustees_sid.append(sid.upper())
 
-                                # Try to add new relationship between the members of the groups and the machines in the containers
-                                outputs = self.bloodhound.add_edges(domain_sid, container_ids, trustees_sid, edge)
+                                # Try to add new relationship between the members of the groups and the machines in the ous
+                                outputs = self.bloodhound.add_edges(domain_sid, ou_ids, trustees_sid, edge)
 
                                 if outputs:
                                     if ingestor == "bh-ce":
                                         try:
                                             self.bloodhound.add_edges_bhce(
-                                                domain_sid, container_ids, trustees_sid, group_sid, group_name
+                                                domain_sid, ou_ids, trustees_sid, group_sid, group_name
                                             )
                                         except Exception as e:
-                                            logging.debug("Error adding edges persistently for BloodHound CE: %s", e)
+                                            logging.debug(f"Error adding edges persistently for BloodHound CE: {e}")
 
                                     for output in outputs:
                                         computer_name = output["c"]["samaccountname"]
@@ -87,7 +87,7 @@ class BloodHoundEnricher:
                                                     )
                                                 except Exception as e:
                                                     logging.debug(
-                                                        "Error adding edges persistently for BloodHound CE: %s", e
+                                                        f"Error adding edges persistently for BloodHound CE: {e}"
                                                     )
 
                                             computer_name = output["c"]["samaccountname"]
@@ -105,9 +105,9 @@ class BloodHoundEnricher:
 
                         if bloodhound_property:
 
-                            # Try to add new property to the machines in the containers
+                            # Try to add new property to the machines in the ous
                             ((key, value),) = bloodhound_property.items()
-                            outputs = self.bloodhound.add_extra_property(container_ids, key, value)
+                            outputs = self.bloodhound.add_extra_property(ou_ids, key, value)
 
                             if outputs:
                                 for output in outputs:
@@ -131,8 +131,8 @@ class BloodHoundEnricher:
 
                         if trustees_sid:
 
-                            # Try to add new relationship between the privileged trustee and the machines in the container
-                            outputs = self.bloodhound.add_edges(domain_sid, container_ids, trustees_sid, edge)
+                            # Try to add new relationship between the privileged trustee and the machines in the ou
+                            outputs = self.bloodhound.add_edges(domain_sid, ou_ids, trustees_sid, edge)
 
                             if outputs:
                                 for output in outputs:
@@ -141,5 +141,8 @@ class BloodHoundEnricher:
                                     output_enrichment["Privilege Rights"].setdefault(privilege, {}).setdefault(
                                         trustee_name, set()
                                     ).add(computer_name)
+
+        if all(not value for value in output_enrichment.values()):
+            return None
 
         return output_enrichment

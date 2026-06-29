@@ -24,7 +24,7 @@ class CSVParser:
                 try:
                     next(reader)
                 except StopIteration:
-                    logging.debug("Unable to parse CSV file : %s", file_path)
+                    logging.debug(f"Unable to parse CSV file : {file_path}")
                     return {"audit.csv": None}
 
                 # Filter column that are not in the config

@@ -3,3 +3,5 @@ refs/
 **__pycache**
 *.egg-info
 build/
+dist/
+gpos/

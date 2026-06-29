@@ -87,86 +87,73 @@ To visualize the relationships and properties added by `GPOHound`, you can impor
 
 Start by downloading the `SYSVOL` contents from the domain controller.
 
-#### Using `rsync`
-
-- Mount the `SYSVOL` share locally:
-
-  ```bash
-  sudo mkdir -p /mnt/$DOMAIN/SYSVOL/
-  sudo mount -t cifs -o username=$USER,password=$PASS,domain=$DOMAIN,ro "//$DC_IP/SYSVOL" "/mnt/$DOMAIN/SYSVOL/"
-  ```
-
 - Download the full `SYSVOL`:
 
   ```bash
-  rsync -a -v --exclude="PolicyDefinitions" --update /mnt/$DOMAIN/SYSVOL .
+  gpohound sysvol --dc $DC_HOST -d $DOMAIN -u $USER -p $PASSWORD 
   ```
 
 - Download only the GPOs:
 
   ```bash
-  mkdir "$DOMAIN"
-  rsync -a -v --exclude="PolicyDefinitions" --update /mnt/$DOMAIN/SYSVOL/*/Policies "$DOMAIN"
+  gpohound sysvol --dc $DC_HOST -d $DOMAIN -u $USER -p $PASSWORD --gpos
   ```
 
-- Unmount the `SYSVOL` share when finished:
+- Download with exclusions:
 
   ```bash
-  sudo umount /mnt/$DOMAIN/SYSVOL/
+  gpohound sysvol --dc $DC_HOST -u $USER -p $PASSWORD --exclude '/Policydefinitions/','/scripts/' --max-size 100
   ```
 
-> [!TIP]
-> `rsync` provides useful options such as `--dry-run`, `--max-size`, and especially `--update`, which skips files that are already up to date.
-> Check the documentation for additional tuning.
+### Dumping LDAP
 
-#### Using `smbclient`
+Retrieve all required data from LDAP : 
 
-- Download the full `SYSVOL`:
+```bash
+gpohound ldap --dc $DC_HOST -d $DOMAIN -u $USER -p $PASSWORD
+```
 
-  ```bash
-  smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; mget *;"
-  ```
-
-- Download only the GPOs:
-
-  ```bash
-  mkdir -p "$DOMAIN"/Policies && cd "$DOMAIN"/Policies
-  smbclient -U "$USER"%"$PASS" //"$DC_IP"/SYSVOL -c "recurse; prompt; cd $DOMAIN/Policies/; mget {*};" && cd -
-  ```
-  
 ### BloodHound
 
-To enable name resolution and data enrichment, you must collect BloodHound data using a collector such as `bloodhound.py` or `SharpHound.exe` and import the gathered data into the BloodHound interface.
+For BloodHound data enrichment, you must collect BloodHound data using a collector such as `bloodhound.py` or `SharpHound.exe` and import the gathered data into the BloodHound interface.
 
 ## Usage
 
-See [CONFIG.md](./CONFIG.md) for instructions on customizing default values and configurations
+Sample GPOHound files are available in `example.zip`. Extract them with `unzip example.zip`.
+
+See [CONFIG.md](./CONFIG.md) for instructions on customizing default values and configurations.
 
 ```bash
-gpohound --neo4j-user $USER --neo4j-pass $PASS -S ./example dump
-gpohound --neo4j-user $USER --neo4j-pass $PASS -S ./example analysis
+gpohound --neo4j-user $USER --neo4j-pass $PASS dump
+gpohound --neo4j-user $USER --neo4j-pass $PASS analysis
+```
+
+### Parse
+
+```bash
+gpohound parse "gpos/sysvols/$DOMAIN/Policies/{31B2F340-016D-11D2-945F-00C04FB984F9}/MACHINE/Registry.pol"
 ```
 
 ### Dump
 
 ```bash
-gpohound dump -h
-gpohound dump --json
-gpohound dump --list --gpo-name
-gpohound dump --guid 21246D99-1426-495B-9E8E-556ABDD81F94
-gpohound dump --file scripts psscripts
+gpohound dump
+gpohound dump --list
+gpohound dump --guid 31B2F340-016D-11D2-945F-00C04FB984F9
+gpohound dump --policies scripts psscripts
 gpohound dump --search 'VNC.*Server' --show
 ```
 
 ### Analysis
 
 ```bash
-gpohound analysis -h
-gpohound analysis --json
-gpohound analysis --processed --object group registry
-gpohound analysis --guid CCF6CAE3-E280-4109-8F9D-25461DBB5D67 --affected
-gpohound analysis --computer 'SRV-PA-03.NORTH.SEVENKINGDOMS.LOCAL' --order
+gpohound analysis
+gpohound analysis --affected
+gpohound analysis --trustee 'SRV01.SEVENKINGDOMS.LOCAL'
+gpohound analysis --trustee 'SRV01.SEVENKINGDOMS.LOCAL' --list
+gpohound analysis --trustee 'SRV01.SEVENKINGDOMS.LOCAL' --dump
 gpohound analysis --enrich
+gpohound analysis --enrich-ce
 ```
 
 
@@ -234,21 +221,23 @@ Default privileged trustees, as well as service accounts with SIDs starting with
 
 # Improvement
 
-- [ ] Improve logging
-- [ ] HTML output
-- [ ] Integrate LDAP
-- [ ] Integrate SMB
-- [ ] Highlight potential conflicts between GPOs
+- [x] Improve logging
+- [x] Integrate LDAP
+- [x] Integrate SMB
 - [ ] Parse remaining extensions 
+- [ ] Web interface
+- [ ] Highlight potential conflicts between GPOs
+
 
 ## GPO Documentation
 
 ### SYSVOL and LDAP
 
 - [x] [\[MS-GPAC\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPAC/) Audit Configuration Extension
-- [X] [\[MS-GPCAP\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPCAP/) Central Access Policies Protocol Extension
+- [x] [\[MS-GPCAP\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPCAP/) Central Access Policies Protocol Extension
 - [x] [\[MS-GPEF\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPEF/) Encrypting File System Extension
 - [x] [\[MS-GPFAS\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPFAS/) Firewall and Advanced Security Data Structure
+- [x] [\[MS-GPFR\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPFR/) Folder Redirection Protocol Extension
 - [ ] [\[MS-GPIE\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPIE/) Internet Explorer Maintenance Extension
 - [x] [\[MS-GPNAP\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPNAP/) Network Access Protection (NAP) Extension
 - [x] [\[MS-GPNRPT\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPNRPT/) Name Resolution Policy Table (NRPT) Data Extension
@@ -257,11 +246,10 @@ Default privileged trustees, as well as service accounts with SIDs starting with
 - [x] [\[MS-GPREG\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPREG/) Registry Extension Encoding
 - [x] [\[MS-GPSB\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSB/) Security Protocol Extension
 - [x] [\[MS-GPSCR\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSCR/) Scripts Extension Encoding
-- [X] [\[MS-GPSI\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSI/) Software Installation Protocol Extension
+- [x] [\[MS-GPSI\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPSI/) Software Installation Protocol Extension
 
 
 ### LDAP Only
 
-- [\[MS-GPDPC\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPDPC/) Deployed Printer Connections Extension
-- [\[MS-GPFR\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPFR/) Folder Redirection Protocol Extension
-- [\[MS-GPWL\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPWL/) Wireless/Wired Protocol Extension
+- [x] [\[MS-GPDPC\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPDPC/) Deployed Printer Connections Extension
+- [ ] [\[MS-GPWL\]](https://learn.microsoft.com/en-us/openspecs/windows_protocols/MS-GPWL/) Wireless/Wired Protocol Extension

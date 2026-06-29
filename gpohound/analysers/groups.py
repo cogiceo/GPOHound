@@ -9,7 +9,7 @@ class GroupAnalyser:
     def __init__(self, ad_utils, config="config.analysis", config_file="group.yaml"):
         self.ad_utils = ad_utils
         self.privileged_groups = load_yaml_config(config, config_file)
-        self.container_machines = {}
+        self.ou_machines = {}
         self.samaccountname_sid = None
         self.all_samaccountnames = None
 
@@ -26,24 +26,20 @@ class GroupAnalyser:
             for var in env_match:
                 if var.lower() == "computername":
 
-                    # Get container affected by the GPO
-                    containers = self.ad_utils.get_containers_affected_by_gpo(gpo_guid, domain_sid) or []
+                    # Get ou affected by the GPO
+                    ous = self.ad_utils.get_ous_affected_by_gpo(gpo_guid, domain_sid) or []
 
                     # Get machines names affected by the GPO
                     machines_names = []
-                    for container in containers:
-                        if not container.get("objectid") in self.container_machines:
-                            self.container_machines[container.get("objectid")] = []
-                            container_machines = (
-                                self.ad_utils.get_machines_in_container(container.get("objectid"), domain_sid) or []
-                            )
+                    for ou in ous:
+                        if not ou.get("objectid") in self.ou_machines:
+                            self.ou_machines[ou.get("objectid")] = []
+                            ou_machines = self.ad_utils.get_machines_in_ou(ou.get("objectid"), domain_sid) or []
 
-                            for machine in container_machines:
-                                self.container_machines[container.get("objectid")].append(
-                                    machine.get("samaccountname", "")
-                                )
+                            for machine in ou_machines:
+                                self.ou_machines[ou.get("objectid")].append(machine.get("samaccountname", ""))
 
-                        machines_names.extend(self.container_machines[container.get("objectid")])
+                        machines_names.extend(self.ou_machines[ou.get("objectid")])
 
                     # Check if the resolved name exists for each machine
                     for machine_name in machines_names:
@@ -167,7 +163,7 @@ class GroupAnalyser:
                                             )
 
                                             if env_members:
-                                                output[group_sid]["EnvMembers"] = env_members
+                                                output[group_sid].setdefault("EnvMembers", []).extend(env_members)
 
                                             if hijackable:
                                                 output[group_sid]["analysis"].add(
@@ -176,7 +172,13 @@ class GroupAnalyser:
                                                 output[group_sid]["references"].add(
                                                     "https://www.cogiceo.com/en/whitepaper_gpphijacking/"
                                                 )
-                                                output[group_sid]["Hijackable"] = hijackable
+                                                output[group_sid].setdefault("Hijackable", {})
+                                                output[group_sid]["Hijackable"].setdefault("lte_20", []).extend(
+                                                    hijackable["lte_20"]
+                                                )
+                                                output[group_sid]["Hijackable"].setdefault("gt_20", []).extend(
+                                                    hijackable["gt_20"]
+                                                )
 
                             # User policy type with logged on user added to the group
                             if policy_type == "User" and group.get("Group").get("useraction") == "ADD":
@@ -190,7 +192,7 @@ class GroupAnalyser:
                             # Privileged group being renamed
                             if group.get("Group").get("newname"):
                                 output[group_sid].setdefault("analysis", set()).add(
-                                    f"The privileged group is being renamed to \"{group.get('Group').get('newname')}\""
+                                    f"The privileged group \"{output[group_sid]['name']}\" is being renamed to \"{group.get('Group').get('newname')}\""
                                 )
                                 output[group_sid].setdefault("references", set()).add(
                                     "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/4b6788a7-c106-4e55-9cfc-1a52bb786e86"

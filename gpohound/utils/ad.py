@@ -11,34 +11,15 @@ class ActiveDirectoryUtils:
 
     def __init__(
         self,
-        bloodhound_connector,
+        bloodhound,
+        sqlite_handler,
         config="config",
         config_file="well_known_groups.yaml",
     ):
         self.config_trustee = load_yaml_config(config, config_file)
-        self.bloodhound = bloodhound_connector
+        self.bloodhound = bloodhound
+        self.sqlite_handler = sqlite_handler
         self.netbios_names = {}
-
-    def node_to_dict(self, query_result, attributes=None):
-        """
-        Convert a bloodhound node "n" to a dictionary
-        """
-        node_dict = dict(query_result["n"])
-        if attributes:
-            extract = {}
-            for attribute in attributes:
-                extract.update({attribute: node_dict.get(attribute)})
-            node_dict = extract
-        return node_dict
-
-    def nodes_to_dict(self, query_results):
-        """
-        Convert multiples BloodHound node to a dictionary list
-        """
-        if len(query_results) == 1:
-            return [self.node_to_dict(query_results)]
-        else:
-            return [self.node_to_dict(result) for result in query_results]
 
     def is_sid(self, value):
         """
@@ -60,12 +41,17 @@ class ActiveDirectoryUtils:
             # Builtin group
             return trustee["displayname"]
 
-        elif self.bloodhound.connection:
+        if self.bloodhound.connection:
             # Domain group or user
             node = self.bloodhound.find_by_objectid(sid)
 
             if node and "samaccountname" in node["n"]:
                 return node["n"]["samaccountname"]
+
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_by_objectid(sid)
+            if result:
+                return result["sAMAccountName"]
 
         return None
 
@@ -96,6 +82,12 @@ class ActiveDirectoryUtils:
             node = self.bloodhound.find_by_samaccountname(samaccountname, domain_sid)
             if node and "objectid" in node["n"]:
                 return node["n"]["objectid"]
+
+        if self.sqlite_handler.dbs and domain_sid:
+            result = self.sqlite_handler.find_by_samaccountname(samaccountname, domain_sid)
+            if result:
+                return result["objectSid"]
+
         return None
 
     def get_all_samaccountnames(self):
@@ -105,7 +97,13 @@ class ActiveDirectoryUtils:
         if self.bloodhound.connection:
             nodes = self.bloodhound.all_samaccountnames()
             if nodes:
-                return self.nodes_to_dict(nodes)
+                return self.bloodhound.nodes_to_dict(nodes)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.all_samaccountnames()
+            if results:
+                return results
+
         return None
 
     def netbios_to_domain(self, netbios_name):
@@ -205,10 +203,7 @@ class ActiveDirectoryUtils:
                 sid = None
                 name = trustee
 
-                (
-                    samaccountname,
-                    domain_dns,
-                ) = trustee.rsplit("@", 1)
+                samaccountname, domain_dns = trustee.rsplit("@", 1)
                 domain_sid = self.domain_to_sid(domain_dns)
                 if domain_sid:
                     sid = self.samaccountname_to_sid(samaccountname, domain_sid)
@@ -242,30 +237,51 @@ class ActiveDirectoryUtils:
         """
         sid = sid.strip("*")
 
+        if not sid:
+            return None
+
         if self.bloodhound.connection:
             node = self.bloodhound.find_by_objectid(sid)
-            return self.node_to_dict(node, attributes)
+            if node:
+                return self.bloodhound.node_to_dict(node, attributes)
+
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_by_objectid(sid)
+            if result:
+                return result
 
         return None
 
-    def find_container(self, target, attributes=None):
+    def find_ou(self, target, attributes=None):
         """
-        Find container based on a machine/user or directly a container
+        Find OU based on a machine/user or directly a ou
         """
         if self.bloodhound.connection:
-            node = self.bloodhound.find_container(target)
+            node = self.bloodhound.find_ou(target)
             if node:
-                return self.node_to_dict(node, attributes)
+                return self.bloodhound.node_to_dict(node, attributes)
+
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_ou(target)
+            if result:
+                return result
+
         return None
 
-    def find_trustee_container(self, target, attributes=None):
+    def find_trustee_ou(self, target, attributes=None):
         """
-        Find container based on a machine/user or directly a container
+        Find ou based on a machine/user or directly a ou
         """
         if self.bloodhound.connection:
-            node = self.bloodhound.find_trustee_container(target)
+            node = self.bloodhound.find_trustee_ou(target)
             if node:
-                return self.node_to_dict(node, attributes)
+                return self.bloodhound.node_to_dict(node, attributes)
+
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_trustee_ou(target)
+            if result:
+                return result
+
         return None
 
     def find_by_gpo_guid(self, guid, domain_sid, attributes=None):
@@ -276,12 +292,42 @@ class ActiveDirectoryUtils:
             node = self.bloodhound.find_by_gpo_guid(guid, domain_sid)
 
             if node and "name" in node["n"]:
-                output = self.node_to_dict(node, attributes)
-
-                if "name" in output:
-                    output["name"] = output["name"].rsplit("@", 1)[0]
-
+                output = self.bloodhound.node_to_dict(node, attributes)
+                output["name"] = output["name"].rsplit("@", 1)[0]
                 return output
+
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_by_gpo_guid(guid, domain_sid)
+            if result:
+                return result
+
+        return None
+
+    def get_wmi_filter(self, gpo_guid, domain):
+        """
+        Find the WMI filters for a GPO
+        """
+        if self.sqlite_handler.dbs:
+            obj = self.sqlite_handler.find_by_domain_name(domain)
+            if obj:
+                domain_sid = obj.get("objectSid")
+                result = self.sqlite_handler.get_wmi_filter(gpo_guid, domain_sid)
+                if result:
+                    return result
+
+        return None
+
+    def get_deployed_printers(self, domain):
+        """
+        Find the deployed printers on the domain
+        """
+        if self.sqlite_handler.dbs:
+            obj = self.sqlite_handler.find_by_domain_name(domain)
+            if obj:
+                domain_sid = obj.get("objectSid")
+                result = self.sqlite_handler.get_deployed_printers(domain_sid)
+                if result:
+                    return result
 
         return None
 
@@ -292,7 +338,12 @@ class ActiveDirectoryUtils:
         if self.bloodhound.connection:
             results = self.bloodhound.find_domains()
             if results:
-                return self.nodes_to_dict(results)
+                return self.bloodhound.nodes_to_dict(results)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.find_domains()
+            if results:
+                return results
 
         return None
 
@@ -305,79 +356,123 @@ class ActiveDirectoryUtils:
             if result and "objectid" in result["n"]:
                 return result["n"]["objectid"]
 
-    def container_inheritance(self, container_id):
+        if self.sqlite_handler.dbs:
+            result = self.sqlite_handler.find_by_domain_name(domain)
+            if result:
+                return result["objectSid"]
+
+    def gpo_inheritance(self, ou_id):
         """
         Get GPO application order (inheritance)
         """
 
         if self.bloodhound.connection:
-            gpo_inheritance = self.bloodhound.get_gpo_inheritance(container_id)
-            if gpo_inheritance:
-                return self.nodes_to_dict(gpo_inheritance)
+            results = self.bloodhound.get_gpo_inheritance(ou_id)
+            if results:
+                results = self.bloodhound.nodes_to_dict(results)
+                for i in range(len(results)):
+                    if hasattr(results[i], "name"):
+                        results[i]["name"] = results[i]["name"].rsplit("@", 1)[0]
+                return results
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.get_gpo_inheritance(ou_id)
+            if results:
+                return results
 
         return None
 
-    def get_containers(self, domain_sid):
+    def get_gpo_impact(self, gpo_guid, domain_sid):
         """
-        Get all the containers of a domain
+        Get OUs affected by a GPO as well as the users and computers impacted
+        """
+
+        output = {}
+
+        found_ous = self.get_ous_affected_by_gpo(gpo_guid, domain_sid)
+        if not found_ous:
+            return None
+
+        for ou in found_ous:
+
+            users = self.get_users_in_ou(ou.get("objectid"), domain_sid)
+            users_names = [user.get("name") for user in users] if users else []
+
+            machines = self.get_machines_in_ou(ou.get("objectid"), domain_sid)
+            machines_names = [machine.get("name") for machine in machines] if machines else []
+
+            if machines_names or users_names:
+                output[ou.get("distinguishedname")] = {
+                    "Computers": machines_names,
+                    "Users": users_names,
+                }
+
+        return output or None
+
+    def get_ous(self, domain_sid):
+        """
+        Get all the ous of a domain
         """
 
         if self.bloodhound.connection:
-            results = self.bloodhound.get_containers(domain_sid)
+            results = self.bloodhound.get_ous(domain_sid)
             if results:
-                return self.nodes_to_dict(results)
+                return self.bloodhound.nodes_to_dict(results)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.get_ous(domain_sid)
+            if results:
+                return results
 
         return None
 
-    def get_containers_affected_by_gpo(self, gpo_guid, domain_sid):
+    def get_ous_affected_by_gpo(self, gpo_guid, domain_sid):
         """
-        Get containers (Domain, OU, Container) affected by a GPO
+        Get Container, Domain, OU affected by a GPO
         """
 
         if self.bloodhound.connection:
-            results = self.bloodhound.containers_affected_by_gpo(gpo_guid, domain_sid)
+            results = self.bloodhound.ous_affected_by_gpo(gpo_guid, domain_sid)
             if results:
-                return self.nodes_to_dict(results)
+                return self.bloodhound.nodes_to_dict(results)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.ous_affected_by_gpo(gpo_guid, domain_sid)
+            if results:
+                return results
 
         return None
 
-    def get_machines_in_container(self, container_id, domain_sid):
+    def get_machines_in_ou(self, ou_id, domain_sid):
         """
-        Get machines in a container
+        Get machines in a OU
         """
 
         if self.bloodhound.connection:
-            results = self.bloodhound.machines_in_container(container_id, domain_sid)
+            results = self.bloodhound.machines_in_ou(ou_id, domain_sid)
             if results:
-                return self.nodes_to_dict(results)
+                return self.bloodhound.nodes_to_dict(results)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.get_obj_in_ou(ou_id, domain_sid, obj_type="computer")
+            if results:
+                return results
 
         return None
 
-    def get_machines_affected_by_gpo(self, gpo_guid, domain_sid):
+    def get_users_in_ou(self, ou_id, domain_sid):
         """
-        Get machines affected by a GPO
+        Get users in a OU
         """
 
         if self.bloodhound.connection:
-            results = self.bloodhound.machines_affected_by_gpo(gpo_guid, domain_sid)
+            results = self.bloodhound.users_in_ou(ou_id, domain_sid)
             if results:
-                return self.nodes_to_dict(results)
+                return self.bloodhound.nodes_to_dict(results)
+
+        if self.sqlite_handler.dbs:
+            results = self.sqlite_handler.get_obj_in_ou(ou_id, domain_sid, obj_type="user")
+            if results:
+                return results
 
         return None
-
-    def resolve_gpo_name(self, domainpolicies):
-        """
-        Resolves the GPO names
-        """
-        for domain, gpos in domainpolicies.items():
-            domain_sid = self.domain_to_sid(domain)
-            if domain_sid:
-                guids = list(gpos.keys())
-                for guid in guids:
-                    gpo = self.find_by_gpo_guid(guid, domain_sid)
-                    if gpo:
-                        # Move Name to the top of the dictionary
-                        gpo_with_name = {"GPO Name": gpo.get("name")}
-                        gpo_with_name.update(domainpolicies[domain][guid])
-                        domainpolicies[domain][guid] = gpo_with_name
-        return domainpolicies

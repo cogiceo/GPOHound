@@ -83,10 +83,11 @@ class XMLGroupsProcessor:
 
                                 if member.get("sid"):
                                     trustee["sid"] = member.get("sid")
-                                    if member.get("name"):
+                                    resolved_name = self.ad_utils.get_trustee(trustee["sid"], domain_sid).get("name")
+                                    if resolved_name:
+                                        trustee["name"] = resolved_name
+                                    elif member.get("name"):
                                         trustee["name"] = member.get("name")
-                                    else:
-                                        trustee["name"] = self.ad_utils.get_trustee(trustee["sid"]).get("name")
 
                                 else:
                                     trustee["name"] = member.get("name")

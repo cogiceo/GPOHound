@@ -1,6 +1,7 @@
-import os
 import logging
 import configparser
+
+from pathlib import Path
 from gpohound.utils.utils import load_yaml_config
 
 
@@ -21,7 +22,7 @@ class INIParser:
         Returns:
             dict: Parsed data structured according to the configuration.
         """
-        filename = os.path.basename(file_path).lower()
+        filename = Path(file_path).name.lower()
 
         if filename == "gpt.ini":
             return self._parse_gpt(file_path)
@@ -29,6 +30,8 @@ class INIParser:
             return self._parse_scripts(file_path)
         elif filename == "psscripts.ini":
             return self._parse_psscripts(file_path)
+        elif filename == "fdeploy.ini" or filename == "fdeploy1.ini":
+            return self._parse_generic_ini(file_path, filename)
         else:
             return None
 
@@ -45,7 +48,7 @@ class INIParser:
                 ini_parser.read_string("".join(ini_lines))
 
         except configparser.MissingSectionHeaderError as error:
-            logging.debug("Could not read INI file %s: %s", file_path, error)
+            logging.debug(f"Could not read INI file {file_path}: {error}")
             return {"GPT.ini": "Could not parse this file"}
 
         for section, rules in self.config.items():
@@ -141,3 +144,28 @@ class INIParser:
                 output[section] = dict(sorted(commands.items()))  # Ensure sorted execution order
 
         return {"PSscripts.ini": output}
+
+    def _parse_generic_ini(self, file_path, file_name):
+        """Parses generic INI file"""
+        output = {}
+        ini_parser = configparser.ConfigParser(allow_no_value=True, interpolation=None)
+
+        try:
+            with open(file_path, "r", encoding="utf-16le", errors="replace") as ini_file:
+                content = ini_file.read().lstrip("\ufeff")  # Remove BOM if present
+                ini_lines = [
+                    line for line in content.splitlines() if line.strip() and line.isprintable()
+                ]  # Remove empty lines
+                ini_parser.read_string("\n".join(ini_lines))
+
+        except configparser.MissingSectionHeaderError as error:
+            logging.debug(f"Could not read INI file {file_path}: {error}")
+            return {file_name: "Could not parse this file"}
+
+        for section in ini_parser.sections():
+            output[section] = {}
+
+            for key, value in ini_parser.items(section):
+                output[section][key] = value
+
+        return {file_name: output}

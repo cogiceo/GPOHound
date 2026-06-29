@@ -1,8 +1,9 @@
 import logging
+
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError, CypherSyntaxError
 
-logging.getLogger("neo4j").setLevel(logging.INFO)
+logging.getLogger("neo4j").setLevel(logging.getLogger().getEffectiveLevel())
 
 
 class BloodHoundConnector:
@@ -21,21 +22,26 @@ class BloodHoundConnector:
             self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
 
             # Test connection
-            self.connection = bool(self.query("RETURN 1"))
-
-            # Check if APOC is available
+            self.connection = None
             try:
-                self.apoc = bool(self.query("RETURN apoc.version()"))
-            except CypherSyntaxError as error:
-                logging.debug("APOC plugin not available: %s", error)
-                self.apoc = False
+                self.connection = bool(self.query("RETURN 1"))
+            except Exception as error:
+                logging.info(f"Failed to connect to the database: {error}")
+
+            self.apoc = False
+            if self.connection:
+                # Check if APOC is available
+                try:
+                    self.apoc = bool(self.query("RETURN apoc.version()"))
+                except CypherSyntaxError as error:
+                    logging.info(f"APOC plugin not available: {error}")
 
         except ServiceUnavailable as error:
-            logging.debug("Unable to connect to Neo4j instance: %s", error)
+            logging.debug(f"Unable to connect to Neo4j instance: {error}")
             self.connection = False
             self.driver = None
         except AuthError as error:
-            logging.debug("Could not authenticate to Neo4j database: %s", error)
+            logging.debug(f"Could not authenticate to Neo4j database: {error}")
             self.connection = False
             self.driver = None
 
@@ -61,6 +67,27 @@ class BloodHoundConnector:
     def close(self):
         if self.driver:
             self.driver.close()
+
+    def node_to_dict(self, query_result, attributes=None):
+        """
+        Convert a bloodhound node "n" to a dictionary
+        """
+        node_dict = dict(query_result["n"])
+        if attributes:
+            extract = {}
+            for attribute in attributes:
+                extract.update({attribute: node_dict.get(attribute)})
+            node_dict = extract
+        return node_dict
+
+    def nodes_to_dict(self, query_results):
+        """
+        Convert multiples BloodHound node to a dictionary list
+        """
+        if len(query_results) == 1:
+            return [self.node_to_dict(query_results)]
+        else:
+            return [self.node_to_dict(result) for result in query_results]
 
     def find_domains(self):
         """
@@ -131,15 +158,15 @@ class BloodHoundConnector:
         params = {"objectid": objectid}
         query = """
                 MATCH (n)
-                WHERE toUpper(n.objectid) = toUpper($objectid)
+                WHERE toUpper(n.objectid) = toUpper($objectid) OR toUpper(n.objectid) = toUpper(n.domain) + "-" + toUpper($objectid)
                 RETURN n LIMIT 1
                 """
 
         return self.query(query, params)
 
-    def find_container(self, target):
+    def find_ou(self, target):
         """
-        Find a container with a attribut of the container
+        Find a OU with a attribut of the OU
         """
         params = {"target": target.upper()}
         query = """
@@ -151,9 +178,9 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
-    def find_trustee_container(self, target):
+    def find_trustee_ou(self, target):
         """
-        Find the container of a trustee
+        Find the OU of a trustee
         """
         params = {"target": target.upper()}
         query = """
@@ -169,7 +196,7 @@ class BloodHoundConnector:
     # Disabled links fix in https://github.com/dirkjanm/BloodHound.py/pull/218
     def get_gpo_inheritance(self, objectid):
         """
-        Get GPO application order for a container
+        Get GPO application order for a OU
         """
         params = {"objectid": objectid}
         query = """
@@ -221,9 +248,9 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
-    def containers_affected_by_gpo(self, gpo_guid, domain_sid):
+    def ous_affected_by_gpo(self, gpo_guid, domain_sid):
         """
-        Get not empty containers that are affected by a GPO
+        Get OUs that are affected by a GPO
         """
         params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
         query = """
@@ -232,71 +259,56 @@ class BloodHoundConnector:
                 WITH g
 
                 // Collect direct GPLinks first
-                OPTIONAL MATCH (g:GPO)-[r1:GPLink]->(c)-[r2:Contains]->(t)
-                WHERE ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
-                AND ANY(label IN labels(t) WHERE label IN ['User','Computer'])
-                WITH g, COLLECT(DISTINCT c) as directContainer
+                OPTIONAL MATCH (g:GPO)-[r1:GPLink]->(c)
+                WHERE ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
+                WITH g, COLLECT(DISTINCT c) as directOU
 
                 // Collect indirect GPLinks
-                OPTIONAL MATCH p2 = (g:GPO)-[r3:GPLink]-()-[r4:Contains*1..]->(c)-[r5:Contains]->(t)
+                OPTIONAL MATCH p2 = (g:GPO)-[r3:GPLink]-()-[r4:Contains*1..]->(c)
                 WHERE ( 
                     ((NONE(x IN TAIL(TAIL(NODES(p2))) WHERE x.blocksinheritance = true AND 'OU' IN LABELS(x))) OR r3.enforced = true)
-                    AND ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
-                    AND ANY(label IN labels(t) WHERE label IN ['User','Computer'])
+                    AND ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
+
                 ) 
-                WITH directContainer, COLLECT(DISTINCT c) AS indirectContainer
-                WITH directContainer + indirectContainer AS AllContainers
-                UNWIND AllContainers AS n
-                RETURN n
-                """
-
-        return self.query(query, params)
-
-    def machines_affected_by_gpo(self, gpo_guid, domain_sid):
-        """
-        Get machines that are affected by a GPO
-        """
-        params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
-        query = """
-                MATCH (g:GPO)
-                WHERE toUpper(g.gpcpath) CONTAINS toUpper($gpo_guid) and toUpper(g.domainsid) = toUpper($domain_sid)
-                WITH g
-
-                // Collect machines from direct GPLink OU first
-                OPTIONAL MATCH (g:GPO)-[r1:GPLink]->(c)-[r2:Contains]->(t:Computer)
-                WHERE ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
-                WITH g, t as directMachines
-
-                // Collect machines from indirect GPLink OU
-                OPTIONAL MATCH p2 = (g:GPO)-[r3:GPLink]-()-[r4:Contains*1..]->(c)-[r5:Contains]->(t:Computer)
-                WHERE ((NONE(x IN TAIL(TAIL(NODES(p2))) WHERE x.blocksinheritance = true AND 'OU' IN LABELS(x))) OR r3.enforced = true)
-                AND ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
-
-                WITH directMachines, t AS indirectMachines
-                WITH collect(directMachines) + collect(indirectMachines) AS AllMachines
-                UNWIND AllMachines AS n
+                WITH directOU, COLLECT(DISTINCT c) AS indirectOU
+                WITH directOU + indirectOU AS AllOUs
+                UNWIND AllOUs AS n
                 RETURN DISTINCT n
                 """
 
         return self.query(query, params)
 
-    def machines_in_container(self, objectid, domain_sid):
+    def machines_in_ou(self, objectid, domain_sid):
         """
-        Get machines that are affected by a GPO
+        Get machines in a OU
         """
         params = {"objectid": objectid, "domain_sid": domain_sid}
         query = """
                 MATCH (c)-[:Contains]->(n:Computer)
-                WHERE ANY(label IN labels(c) WHERE label IN ['Container','OU', 'Domain'])
+                WHERE ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
                 AND toUpper(c.objectid) = toUpper($objectid) AND toUpper(c.domainsid) = toUpper($domain_sid)
                 RETURN n
                 """
 
         return self.query(query, params)
 
-    def get_containers(self, domain_sid):
+    def users_in_ou(self, objectid, domain_sid):
         """
-        Get all containers of a domain
+        Get users in a OU
+        """
+        params = {"objectid": objectid, "domain_sid": domain_sid}
+        query = """
+                MATCH (c)-[:Contains]->(n:User)
+                WHERE ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
+                AND toUpper(c.objectid) = toUpper($objectid) AND toUpper(c.domainsid) = toUpper($domain_sid)
+                RETURN n
+                """
+
+        return self.query(query, params)
+
+    def get_ous(self, domain_sid):
+        """
+        Get all ous of a domain
         """
         params = {"domain_sid": domain_sid}
         query = """
@@ -306,20 +318,6 @@ class BloodHoundConnector:
                 RETURN DISTINCT n
                 """
 
-        return self.query(query, params)
-
-    def get_not_empty_containers(self, domain_sid):
-        """
-        Get all not empty containers
-        """
-        params = {"domain_sid": domain_sid}
-        query = """
-                MATCH (n)-[r:Contains]->(l) 
-                WHERE ANY(label IN labels(n) WHERE label IN ['Container','OU', 'Domain'])
-                AND ANY(label IN labels(l) WHERE label IN ['Computer','User'])
-                AND n.domainsid = $domain_sid 
-                RETURN DISTINCT n
-                """
         return self.query(query, params)
 
     def add_edge(self, domain_sid, trustee_sid, computer_objectid, edge):
@@ -346,21 +344,21 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
-    def add_edges(self, domain_sid, container_ids, trustee_sids, edge):
+    def add_edges(self, domain_sid, ou_ids, trustee_sids, edge):
         """
-        Add relationship between a trustee and machines from a container
+        Add relationship between a trustee and machines from a OU
         """
         params = {
             "edge": edge,
-            "container_ids": container_ids,
+            "ou_ids": ou_ids,
             "trustee_sids": trustee_sids,
             "domain_sid": domain_sid.upper(),
         }
 
         query = """
-                // Collect all computers from all containers
-                UNWIND $container_ids AS container_id
-                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
+                // Collect all computers from all ous
+                UNWIND $ou_ids AS ou_id
+                MATCH (o {objectid: ou_id})-[:Contains]->(c:Computer)
                 WITH collect(DISTINCT c) AS computers
 
                 // Match all trustees
@@ -424,15 +422,15 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
-    def add_edges_bhce(self, domain_sid, container_ids, trustee_sids, group_sid, group_name):
+    def add_edges_bhce(self, domain_sid, ou_ids, trustee_sids, group_sid, group_name):
         """
-        Add relationships between a trustee, a local group and machines from a container for BloodHound CE.
+        Add relationships between a trustee, a local group and machines from a OU for BloodHound CE.
         The naming follows SharpHound's convention: "GROUPNAME@COMPUTERNAME" in uppercase.
         Each computer has its own local groups, with "objectid" values in the format: COMPUTER_SID-GROUP_RID
         """
 
         params = {
-            "container_ids": container_ids,
+            "ou_ids": ou_ids,
             "trustee_sids": trustee_sids,
             "domain_sid": domain_sid.upper(),
             "group_rid": group_sid.split("-")[-1],
@@ -440,9 +438,9 @@ class BloodHoundConnector:
         }
 
         query = """
-                // Expand all containers and collect computers
-                UNWIND $container_ids AS container_id
-                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
+                // Expand all ous and collect computers
+                UNWIND $ou_ids AS ou_id
+                MATCH (o {objectid: ou_id})-[:Contains]->(c:Computer)
                 WITH collect(DISTINCT c) AS computers
 
                 // Match all trustees
@@ -474,20 +472,20 @@ class BloodHoundConnector:
                 return [outputs]
         return None
 
-    def add_extra_property(self, container_ids, property_key, property_value):
+    def add_extra_property(self, ou_ids, property_key, property_value):
         """
-        Add property to a machine in a container
+        Add property to a machine in a ou
         """
 
         params = {
-            "container_ids": container_ids,
+            "ou_ids": ou_ids,
             "property_key": property_key,
             "property_value": property_value,
         }
 
         query = """
-                UNWIND $container_ids AS container_id
-                MATCH (o {objectid: container_id})-[:Contains]->(c:Computer)
+                UNWIND $ou_ids AS ou_id
+                MATCH (o {objectid: ou_id})-[:Contains]->(c:Computer)
                 WITH c
                 CALL apoc.create.setProperty(c, $property_key, $property_value)
                 YIELD node AS n

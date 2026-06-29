@@ -1,5 +1,6 @@
 import struct
 import logging
+import traceback
 from io import BytesIO
 from gpohound.utils.utils import load_yaml_config
 
@@ -60,7 +61,7 @@ class AASParser:
             try:
                 return raw.decode("utf-8")
             except UnicodeDecodeError as e:
-                logging.debug("Decoding error for aas file %s: %s", self.file_name, e)
+                logging.debug(f"Decoding error for aas file {self.file_name}: {e}")
                 return raw.hex()
 
         # Binary stream
@@ -73,14 +74,13 @@ class AASParser:
             try:
                 return raw.decode("utf-16le")
             except UnicodeDecodeError as e:
-                logging.debug("Unicode Decoding error for aas file %s: %s", self.file_name, e)
+                logging.debug(f"Unicode Decoding error for aas file {self.file_name}: {e}")
             return raw.hex()
 
     def parse(self, file_path, file_name):
         """
         Parse Application Advertise Script
         """
-
         if "include" in self.config["aas"]:
             records = {}
 
@@ -90,9 +90,16 @@ class AASParser:
                 self.data = BytesIO(f.read())
 
             while True:
-                opcode, arg_count = struct.unpack("<BB", self.data.read(2))
-                args = [self.parse_args() for _ in range(arg_count)]
-                records.setdefault(opcode, []).append(args)
+                try:
+                    opcode, arg_count = struct.unpack("<BB", self.data.read(2))
+                    args = []
+                    for _ in range(arg_count):
+                        args.append(self.parse_args())
+                    records.setdefault(opcode, []).append(args)
+                except Exception as e:
+                    logging.info(f"Failed to parse the .aas file {file_path} : {e}")
+                    logging.debug(traceback.format_exc())
+                    return None
 
                 # print(opcode, args) # Print all infos contained in the AAS file
                 # End opcode

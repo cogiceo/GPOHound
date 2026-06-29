@@ -1,6 +1,8 @@
-import os
 import re
 import logging
+
+from os import walk
+from pathlib import Path
 
 from gpohound.parsers.xml_files import XMLParser
 from gpohound.parsers.pol_files import POLParser
@@ -8,16 +10,17 @@ from gpohound.parsers.inf_files import INFParser
 from gpohound.parsers.ini_files import INIParser
 from gpohound.parsers.csv_files import CSVParser
 from gpohound.parsers.aas_files import AASParser
+from gpohound.parsers.raw_files import RAWParser
 
 
 class GPOParser:
     """
-    Class to parse the files contain in the Policies
+    Class to parse data in GPOs
     """
 
-    def __init__(self, policy_files):
+    def __init__(self, selected_policies):
 
-        self.policy_files = [file.lower() for file in policy_files]
+        self.selected_policies = [file.lower() for file in selected_policies]
         self.scripts_folder = ["Startup", "Shutdown", "Logon", "Logoff"]
 
         self.xmlparser = XMLParser()
@@ -26,9 +29,7 @@ class GPOParser:
         self.iniparser = INIParser()
         self.csvparser = CSVParser()
         self.aasparser = AASParser()
-
-        self.domain_policies_info = {}
-        self.policies = {}
+        self.rawparser = RAWParser()
 
     def get_files_info(self, policy_path):
         """
@@ -38,25 +39,32 @@ class GPOParser:
         files_info = []
 
         # Walk through the directories to find files
-        for root, _, files in os.walk(policy_path):
+        for root, _, files in walk(policy_path):
+            root = Path(root)
+
             for file in files:
-                path = [items for items in os.path.join(root, file).replace("\\", "/").split("/")]
-                if file.lower() in self.policy_files:
+
+                full_path = root / file
+                parts = full_path.parts
+
+                if file.lower() in self.selected_policies:
                     files_info.append(self.file_info(root, policy_path, file))
+
                 elif (
-                    ("scripts.ini" in self.policy_files or "PSscripts.ini" in self.policy_files)
-                    and path[-3] == "Scripts"
-                    and path[-2] in self.scripts_folder
+                    ("scripts.ini" in self.selected_policies or "PSscripts.ini" in self.selected_policies)
+                    and parts[-3] == "Scripts"
+                    and parts[-2] in self.scripts_folder
                 ):
                     script = self.file_info(root, policy_path, file)
                     if script:
-                        script["type"] = path[-2]
+                        script["type"] = parts[-2]
                         files_info.append(script)
+
                 elif (
-                    "{guid}.aas" in self.policy_files
+                    "{guid}.aas" in self.selected_policies
                     and file.lower().endswith(".aas")
-                    and path[-2].lower() == "applications"
-                    and path[-3].lower() in ["machine", "user"]
+                    and parts[-2].lower() == "applications"
+                    and parts[-3].lower() in ["machine", "user"]
                 ):
                     files_info.append(self.file_info(root, policy_path, file))
 
@@ -67,28 +75,24 @@ class GPOParser:
         Get information on the file in the file system
         """
 
-        # Retrive information on the file
-        full_path = os.path.join(root, file).replace("\\", "/")
-        relative_path = full_path.replace(policy_path, "").replace("\\", "/")
-        relative_path_list = [items.lower() for items in relative_path.split("/")]
-        policy_type = ""
+        full_path = root / file
+        relative_path = full_path.relative_to(policy_path)
+        relative_parts = {p.lower() for p in relative_path.parts}
 
-        if "machine" in relative_path_list:
+        if "machine" in relative_parts:
             policy_type = "Machine"
-        elif "user" in relative_path_list:
+        elif "user" in relative_parts:
             policy_type = "User"
+        else:
+            policy_type = ""
 
-        size = os.path.getsize(full_path)
-        file_name, file_extension = os.path.splitext(file)
-
-        # Store GPO file information
         entry = {
-            "name": file_name,
-            "extension": file_extension,
-            "relative_path": relative_path,
+            "name": full_path.stem,
+            "extension": full_path.suffix,
+            "relative_path": relative_path.as_posix(),
             "policy_type": policy_type,
-            "full_path": full_path,
-            "size": f"{size} bytes",
+            "full_path": str(full_path),
+            "size": f"{full_path.stat().st_size} bytes",
         }
 
         return entry
@@ -103,17 +107,19 @@ class GPOParser:
         pattern = re.compile(r"(.*?/([^/]+)/Policies/(\{[0-9A-Fa-f-]{36}\}))$")
 
         # Walk through the directories
-        for dirpath, dirnames, _ in os.walk(sysvol_path):
+        for dirpath, dirnames, _ in walk(sysvol_path):
 
+            dirpath = Path(dirpath)
             for dirname in dirnames:
-                full_path = os.path.join(dirpath, dirname).replace("\\", "/")
-                match_path = pattern.search(full_path)
+
+                full_path = dirpath / dirname
+                match_path = pattern.search(full_path.as_posix())
 
                 # Get file path that match the pattern
                 if match_path:
                     policy_path = match_path.group(1)
-                    domain = match_path.group(2)
-                    guid = match_path.group(3)
+                    domain = match_path.group(2).lower()
+                    guid = match_path.group(3).upper()
                     files = self.get_files_info(policy_path)
 
                     # Store the files path by domain and GPO guids
@@ -121,24 +127,86 @@ class GPOParser:
 
         return policy_info
 
-    def parse_domain_policies(self, sysvol_path):
+    def parse_domains_policies(self, sysvol_path, ad_utils, filter_domains=None, filter_guids=None):
         """
-        Extract settings from SYSVOL to dictionary
+        Extract settings from SYSVOL and LDAP to dictionary
         """
+
         results = {}
         domain_policies_info = self.find_policy_info(sysvol_path)
         for domain, policies_info in domain_policies_info.items():
-            for policy_guid, policy_data in policies_info.items():
-                policy = self.parse_policy(policy_guid, policy_data)
-                if policy:
-                    results.setdefault(domain.lower(), {}).update(policy)
-        if results:
-            self.policies.update(results)
+            if not filter_domains or domain in filter_domains:
+                # SYSVOL files
+                for policy_guid, policy_data in policies_info.items():
+                    policy_guid = policy_guid.upper()
+
+                    if not filter_guids or policy_guid in filter_guids:
+                        policy = self.parse_policy(policy_guid, policy_data)
+                        if policy:
+                            wmi_filter = ad_utils.get_wmi_filter(policy_guid, domain)
+                            if wmi_filter:
+                                policy[policy_guid]["WMI filter"] = wmi_filter
+                            results.setdefault(domain.lower(), {}).update(policy)
+
+                # Printers in LDAP
+                if "ldap_printers" in self.selected_policies:
+                    printers = ad_utils.get_deployed_printers(domain)
+                    if printers:
+                        entry = {}
+                        for p in printers:
+                            if not filter_guids or p.get("gpoCN") in filter_guids:
+                                gpo_entry = entry.setdefault(p.get("gpoCN"), {})
+                                printer_section = gpo_entry.setdefault(p.get("gpoType"), {}).setdefault(
+                                    "Deployed Printer Connection", {}
+                                )
+                                printer_section.setdefault("uNCName", []).append(p.get("uNCName"))
+
+                        if entry:
+                            results[domain].update(entry)
+
+        return results
+
+    def parse_file(self, policy_file):
+        """
+        Parse a GPO file based on its extension
+        """
+
+        configuration = {}
+        extension = policy_file["extension"].lower()
+
+        # Parse file based on file extension
+        try:
+            match extension:
+                case ".xml":
+                    configuration = self.xmlparser.parse(policy_file["full_path"])
+                case ".pol":
+                    configuration = self.polparser.parse(policy_file["full_path"], policy_file["policy_type"])
+                case ".inf":
+                    configuration = self.infparser.parse(policy_file["full_path"], policy_file["name"])
+                case ".ini":
+                    configuration = self.iniparser.parse(policy_file["full_path"])
+                case ".csv":
+                    configuration = self.csvparser.parse(policy_file["full_path"])
+                case ".aas":
+                    configuration = self.aasparser.parse(policy_file["full_path"], policy_file["name"])
+                case _:
+                    if policy_file.get("type") in self.scripts_folder and not policy_file.get("extension") in [".exe"]:
+                        configuration = self.rawparser.decode_raw_file(policy_file)
+
+        except (UnicodeError, UnicodeDecodeError) as error:
+            logging.debug(f"Could not decode file {policy_file['full_path']}: {error}")
+            configuration = {policy_file["relative_path"]: "Could not decode this file"}
+
+        if not configuration:
+            configuration = {policy_file["relative_path"]: "Empty or invalid configuration"}
+
+        return configuration
 
     def parse_policy(self, policy_guid, policy_data):
         """
         Parse all the files in a GPO to dictionary
         """
+
         results = {}
 
         if not policy_data["files"]:
@@ -147,51 +215,16 @@ class GPOParser:
         # Iterates over the files in a GPO
         for policy_file in policy_data["files"]:
 
-            configuration = {}
-            extension = policy_file["extension"].lower()
+            configuration = self.parse_file(policy_file)
 
-            # Parse file based on file extension
-            try:
-                match extension:
-                    case ".xml":
-                        configuration = self.xmlparser.parse(policy_file["full_path"])
-                    case ".pol":
-                        configuration = self.polparser.parse(policy_file["full_path"], policy_file["policy_type"])
-                    case ".inf":
-                        configuration = self.infparser.parse(policy_file["full_path"], policy_file["name"])
-                    case ".ini":
-                        configuration = self.iniparser.parse(policy_file["full_path"])
-                    case ".csv":
-                        configuration = self.csvparser.parse(policy_file["full_path"])
-                    case ".aas":
-                        configuration = self.aasparser.parse(policy_file["full_path"], policy_file["name"])
-                        if configuration:
-                            results.setdefault(policy_file["policy_type"], {}).setdefault(
-                                "Application Advertise Script", {}
-                            ).update(configuration)
-                            continue
-                    case _:
-                        if policy_file.get("type") in self.scripts_folder:
-                            try:
-                                configuration = {
-                                    policy_file.get("type"): {
-                                        "file": policy_file["relative_path"],
-                                    }
-                                }
-                                raw = open(policy_file["full_path"], "r", encoding="utf-8").read()
-                                configuration[policy_file.get("type")].update({"content": raw})
-                            except UnicodeDecodeError as error:
-                                logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
-                            except FileNotFoundError as error:
-                                logging.debug("Executable file not found : %s", error)
+            if configuration:
+                if policy_file["extension"].lower() == ".aas":
+                    results.setdefault(policy_file["policy_type"], {}).setdefault(
+                        "Application Advertise Script", {}
+                    ).update(configuration)
+                elif configuration and policy_file["policy_type"] in ["Machine", "User"]:
+                    results.setdefault(policy_file["policy_type"], {}).update(configuration)
+                else:
+                    results = configuration
 
-            except (UnicodeError, UnicodeDecodeError) as error:
-                logging.debug("Could not decode file %s: %s", policy_file["full_path"], error)
-                configuration = {policy_file["relative_path"]: "Could not decode this file"}
-
-            if configuration and policy_file["policy_type"] in ["Machine", "User"]:
-                results.setdefault(policy_file["policy_type"], {}).update(configuration)
-            elif configuration:
-                results = configuration
-
-        return {policy_guid.upper(): results}
+        return {policy_guid: results}

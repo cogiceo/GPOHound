@@ -1,16 +1,18 @@
-import json
-import copy
-import sys
-import logging
+from pathlib import Path
+
+from rich.console import Console
 
 from gpohound.parser import GPOParser
 from gpohound.processor import GPOProcessor
 from gpohound.analyser import GPOAnalyser
 from gpohound.enricher import BloodHoundEnricher
 
-from gpohound.utils.utils import search_keys_values, print_dict_as_tree, print_processed, print_analysed, print_enriched
 from gpohound.utils.bloodhound import BloodHoundConnector
+from gpohound.utils.sqlite import SQLiteHandler
 from gpohound.utils.ad import ActiveDirectoryUtils
+
+
+console = Console(highlight=False)
 
 
 class GPOHoundCore:
@@ -20,358 +22,296 @@ class GPOHoundCore:
 
     def __init__(
         self,
-        policy_files,
+        selected_policies,
+        ldap_path=None,
+        sysvol_path=None,
         neo4j_host=None,
         neo4j_user=None,
         neo4j_password=None,
         neo4j_port=None,
     ):
 
+        self.sysvol_path = sysvol_path
+
         # BloodHound interactions
-        self.bloodhound_connector = BloodHoundConnector(neo4j_host, neo4j_user, neo4j_password, neo4j_port)
-        self.bloodhound_enricher = BloodHoundEnricher(self.bloodhound_connector)
+        self.bloodhound = BloodHoundConnector(neo4j_host, neo4j_user, neo4j_password, neo4j_port)
+        self.bloodhound_enricher = BloodHoundEnricher(self.bloodhound)
+
+        # LDAP SQLite interactions
+        self.sqlite_handler = SQLiteHandler(ldap_path)
 
         # Active Directory utilities
-        self.ad_utils = ActiveDirectoryUtils(self.bloodhound_connector)
+        self.ad_utils = ActiveDirectoryUtils(self.bloodhound, self.sqlite_handler)
 
         # GPO parser, processor and analyser
-        self.gpo_parser = GPOParser(policy_files)
+        self.gpo_parser = GPOParser(selected_policies)
         self.gpo_processor = GPOProcessor(self.ad_utils)
         self.gpo_analyser = GPOAnalyser(self.ad_utils)
 
-    def dump(
-        self,
-        sysvol_path,
-        domains=None,
-        guids=None,
-        gpo_name=None,
-        print_json=None,
-        list_gpos=None,
-        search=None,
-        show=None,
-    ):
+    def parse_file(self, file_path):
         """
-        Dump GPO files and enrich data with bloodhound
+        Parse a single policy file
         """
 
-        if not self.ad_utils.bloodhound.connection and gpo_name:
-            logging.info("This command requires a working bloodhound connection")
-            sys.exit()
+        file = Path(file_path)
+        file_info = self.gpo_parser.file_info(file.parent, "", file.name)
+        policy = self.gpo_parser.parse_file(file_info)
 
-        self.gpo_parser.parse_domain_policies(sysvol_path)
+        return policy or None
 
-        if not self.gpo_parser.policies:
-            logging.info("No GPOs were found...")
-            sys.exit()
+    def get_ou_object(self, object, type="ou"):
+        """
+        Returns the OU of an object
+        """
 
-        output = copy.deepcopy(self.gpo_parser.policies)
+        if type == "ou":
+            return self.ad_utils.find_ou(object)
+        elif type == "trustee":
+            return self.ad_utils.find_trustee_ou(object)
+        else:
+            return None
 
-        # Only keep the specified domains
-        if domains:
-            tmp = {}
+    def get_gpos_on_ou(self, ou):
+        """
+        Returns the GPOs applied to an OU
+        """
 
-            for domain in domains:
-                if domain in output:
-                    tmp.update({domain: output[domain]})
+        domain = self.ad_utils.find_by_sid(ou.get("domainsid"))
+        if not domain:
+            return None, None
 
-            output = tmp
+        domain_name = domain.get("name", "").lower()
 
-        # Only keep the specified GUIDs
-        if guids:
-            extracted = {}
+        ou_ordered_gpos = self.ad_utils.gpo_inheritance(ou.get("objectid"))
+        if not ou_ordered_gpos:
+            return None, None
 
-            for domain, gpos in output.items():
-                tmp = {}
+        return domain_name, ou_ordered_gpos
 
+    def resolve_gpo_name(self, domain_policies):
+        """
+        Resolves the GPO names
+        """
+
+        for domain, gpos in domain_policies.items():
+            domain_sid = self.ad_utils.domain_to_sid(domain)
+            if domain_sid:
+                guids = list(gpos.keys())
                 for guid in guids:
-                    guid = "{" + guid.upper().strip("{").strip("}") + "}"
+                    gpo = self.ad_utils.find_by_gpo_guid(guid, domain_sid)
+                    if gpo:
+                        # Move Name to the top of the dictionary
+                        gpo_with_name = {"GPO Name": gpo.get("name")}
+                        gpo_with_name.update(domain_policies[domain][guid])
+                        domain_policies[domain][guid] = gpo_with_name
 
-                    if guid in gpos:
-                        tmp.setdefault(domain, {}).setdefault(guid, {}).update(gpos[guid])
+        return domain_policies
 
-                extracted.update(tmp)
-
-            output = extracted
-
-        # Searches in the output with a regex
-        if search:
-            output = search_keys_values(output, search, show)
-
-        # Resolves GPO names
-        if gpo_name and not search:
-            output = self.ad_utils.resolve_gpo_name(output)
-
-        # Only list the GPO GUIDs/names
-        if list_gpos:
-            tmp_dict = {}
-            for domain, gpos in output.items():
-                tmp_list = []
-                for guid, data in gpos.items():
-                    gpo_name = data.get("GPO Name")
-                    if gpo_name:
-                        tmp_list.append(f"{guid}: {gpo_name}")
-                    else:
-                        tmp_list.append(guid)
-                tmp_dict[domain] = tmp_list
-            output = tmp_dict
-
-        # Print output
-        if not output:
-            logging.info("No GPOs were found for the given filter(s)...")
-            sys.exit()
-
-        if print_json:
-            logging.info(json.dumps(output, indent=4))
-        else:
-            if search:
-                print_dict_as_tree("Search results", output)
-            else:
-                print_dict_as_tree("GPOs", output)
-
-    def analyser(
-        self,
-        sysvol_path,
-        domains=None,
-        guids=None,
-        processed=False,
-        affected=False,
-        ingestor="",
-        gpo_name=False,
-        order=False,
-        show=False,
-        objects=None,
-        container=None,
-        computer=None,
-        user=None,
-        print_json=False,
-    ):
+    def affected_ous(self, domain_policies):
         """
-        Process the GPO and groups settings types
-        Analysis of vulnerabilities in the GPOs settings
-        Enrich bloodhooud with found vulnerabilites
+        Get OUs affected by the GPOs
         """
 
-        if not self.ad_utils.bloodhound.connection and (
-            affected or order or ingestor or container or user or computer or gpo_name or show
-        ):
-            logging.info("This command requires a working bloodhound connection")
-            sys.exit()
+        for domain, gpos in domain_policies.items():
+            domain_sid = self.ad_utils.domain_to_sid(domain)
+            if domain_sid:
+                guids = list(gpos.keys())
+                for guid in guids:
+                    ous = self.ad_utils.get_gpo_impact(guid, domain_sid)
+                    if ous:
+                        # Move Name to the top of the dictionary
+                        gpo_with_ous = {"Affected OUs": ous}
+                        gpo_with_ous.update(domain_policies[domain][guid])
+                        domain_policies[domain][guid] = gpo_with_ous
 
-        if not self.ad_utils.bloodhound.apoc and ingestor:
-            logging.info(
-                "This command requires to have APOC installed for Neo4j. Check the GPOHound documentation for more information"
-            )
-            sys.exit()
+        return domain_policies
 
-        if order and not (container or computer or user):
-            logging.info("You need to specify a target...")
-            sys.exit()
+    def parse_policies(self, domains=None, guids=None, affected=False):
+        """
+        Parse the GPOs in the SYSVOL
+        """
 
-        self.gpo_parser.parse_domain_policies(sysvol_path)
+        parsed_policies = self.gpo_parser.parse_domains_policies(self.sysvol_path, self.ad_utils, domains, guids)
 
-        if not self.gpo_parser.policies:
-            logging.info("No GPOs were found...")
-            sys.exit()
+        if not parsed_policies:
+            return None
 
-        output_show = {}
-        output_order = {}
-        output_proccessed = {}
-        output_analysis = {}
-        output_enrichment = {}
+        if affected:
+            parsed_policies = self.affected_ous(parsed_policies)
 
-        # Guids to parse
-        if guids:
-            guids = ["{" + guid.upper().strip("{").strip("}") + "}" for guid in guids]
+        parsed_policies = self.resolve_gpo_name(parsed_policies)
 
-        if container or computer or user:
+        return parsed_policies
 
-            if container:
-                found_container = self.ad_utils.find_container(container)
-            elif computer:
-                found_container = self.ad_utils.find_trustee_container(computer)
+    def list_policies(self, domains=None, guids=None):
+        """
+        List policies in the SYSVOL
+        """
+
+        parsed_policies = self.parse_policies(domains, guids)
+
+        gpo_list = {}
+        for domain, gpos in parsed_policies.items():
+            tmp_list = []
+            for guid, data in gpos.items():
+                gpo_name = data.get("GPO Name")
+                if gpo_name:
+                    tmp_list.append(f"{guid}: {gpo_name}")
+                else:
+                    tmp_list.append(guid)
+            gpo_list[domain] = tmp_list
+
+        return gpo_list or None
+
+    def dump_ou_gpos_settings(self, domain, ou_ordered_gpos, affected=False):
+        """
+        Get the GPOs settings on an OU
+        """
+
+        parsed_policies = self.parse_policies(domains=[domain], affected=affected)
+
+        if not parsed_policies:
+            return None
+
+        gpo_inheritance = {}
+        for idx, gpo in enumerate(ou_ordered_gpos, start=1):
+            if "name" in gpo:
+                gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
+                if gpo_guid in parsed_policies[domain]:
+                    title = f"{idx} - {gpo_guid}"
+                    data = parsed_policies[domain][gpo_guid]
+                    if data:
+                        gpo_inheritance[title] = data
+
+        return gpo_inheritance or None
+
+    def list_ou_gpos(self, ou_ordered_gpos):
+        """
+        Get a list of the GPOs on a list
+        """
+
+        gpo_list = []
+        for idx, gpo in enumerate(ou_ordered_gpos, start=1):
+            if "name" in gpo:
+                gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
+                gpo_name = gpo["name"]
+                gpo_list.append(f"{idx} - {gpo_guid}: {gpo_name}")
             else:
-                found_container = self.ad_utils.find_trustee_container(user)
+                gpo_list.append(f"{idx} - GPO not found in LDAP")
 
-            if found_container:
-                container_id = found_container.get("objectid")
-                container_dn = found_container.get("distinguishedname")
-                domain_sid = found_container.get("domainsid")
-                domain = self.ad_utils.find_by_sid(domain_sid).get("name", "").lower()
-                ordered_gpos = self.ad_utils.container_inheritance(container_id)
+        return gpo_list or None
 
-                if show:
-                    gpo_inheritance = {}
-                    for idx, gpo in enumerate(ordered_gpos, start=1):
-                        if "name" in gpo:
-                            gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
-                            if gpo_guid in self.gpo_parser.policies[domain]:
-                                gpo_name = gpo["name"]
-                                title = f"{idx} - {gpo_guid}: {gpo_name}"
-                                data = self.gpo_parser.policies[domain][gpo_guid]
-                                if data:
-                                    if container:
-                                        gpo_inheritance[title] = data
-                                    elif computer and data.get("Machine"):
-                                        gpo_inheritance[title] = data.get("Machine")
-                                    elif user and data.get("User"):
-                                        gpo_inheritance[title] = data.get("User")
-                            else:
-                                title = f"{idx} - Empty GPO"
-                                gpo_inheritance[title] = None
-                        else:
-                            title = f"{idx} - Unknown GPO"
-                            gpo_inheritance[title] = None
-                    output_show.update({container_dn: gpo_inheritance})
+    def analyse_ou_gpos(self, domain, domain_sid, ou_ordered_gpos, objects=None, affected=False):
+        """
+        Get the analysis of GPOs on an OU
+        """
 
-                elif order:
-                    gpo_inheritance = []
-                    for idx, gpo in enumerate(ordered_gpos, start=1):
-                        if "name" in gpo:
-                            gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
-                            gpo_name = gpo["name"]
-                            gpo_inheritance.append(f"{idx} - {gpo_guid}: {gpo_name}")
-                        else:
-                            gpo_inheritance.append(f"{idx} - Unknown GPO")
-                    output_order.update({container_dn: gpo_inheritance})
+        output = {}
+        parsed_policies = self.parse_policies([domain], affected=affected)
 
-                elif domain and domain_sid and domain in self.gpo_parser.policies:
-                    gpo_settings = {}
-                    for gpo in ordered_gpos:
-                        if "name" in gpo:
-                            gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
-                            if gpo_guid in self.gpo_parser.policies[domain]:
-                                gpo_name = gpo["name"]
-                                gpo_settings = self.gpo_parser.policies[domain][gpo_guid]
-                                if gpo_settings:
+        for gpo in ou_ordered_gpos:
+            gpo_guid = "{" + gpo["gpcpath"].split("{", 1)[1].split("}")[0] + "}"
 
-                                    proccessed_gpo = self.gpo_processor.process(gpo_settings, objects, domain_sid)
+            if gpo_guid in parsed_policies[domain]:
+                gpo_settings = parsed_policies[domain][gpo_guid]
 
-                                    if proccessed_gpo and processed:
-                                        output_proccessed.setdefault(domain, {}).setdefault(gpo_guid, {}).update(
-                                            proccessed_gpo
-                                        )
+                if gpo_settings:
+                    processed_gpo = self.gpo_processor.process(gpo_settings, domain_sid, objects)
+                    analysis = self.gpo_analyser.analyse(domain_sid, gpo_guid, gpo_settings, processed_gpo, objects)
 
-                                    elif proccessed_gpo:
-                                        analysis = self.gpo_analyser.analyse(
-                                            domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
-                                        )
+                    if analysis:
+                        gpo_output = output.setdefault(domain, {}).setdefault(gpo_guid, {})
 
-                                        if analysis:
-                                            output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(
-                                                analysis
-                                            )
+                        if gpo_settings.get("GPO Name"):
+                            gpo_output["GPO Name"] = gpo_settings.get("GPO Name")
 
-        else:
-            # Iterates over domains
-            for domain, gpos in self.gpo_parser.policies.items():
+                        if affected and (ous := self.ad_utils.get_gpo_impact(gpo_guid, domain_sid)):
+                            gpo_output.setdefault("Affected OUs", {}).update(ous)
 
-                analyses = {}
+                        gpo_output.update(analysis)
 
-                domain_sid = self.ad_utils.domain_to_sid(domain)
-                if domains and domain not in domains:
+        return output or None
+
+    def analyse_all_gpos(self, domains=None, guids=None, objects=None, affected=False):
+        """
+        Get the analysis of GPOs in the SYSVOL
+        """
+
+        output = {}
+
+        parsed_policies = self.parse_policies(affected=affected)
+
+        if not parsed_policies:
+            return None
+
+        for domain, gpos in parsed_policies.items():
+
+            domain_sid = self.ad_utils.domain_to_sid(domain)
+            if domains and domain not in domains:
+                continue
+
+            # Iterates over GPOs
+            for gpo_guid, gpo_settings in gpos.items():
+                if guids and gpo_guid not in guids:
                     continue
 
-                # Iterates over GPOs
-                for gpo_guid, gpo_settings in gpos.items():
-                    if guids and gpo_guid not in guids:
-                        continue
+                # Process the GPOs
+                processed_gpo = self.gpo_processor.process(gpo_settings, domain_sid, objects)
+                analysis = self.gpo_analyser.analyse(domain_sid, gpo_guid, gpo_settings, processed_gpo, objects)
 
-                    # Process the GPOs
-                    proccessed_gpo = self.gpo_processor.process(gpo_settings, objects, domain_sid)
+                if analysis:
+                    gpo_output = output.setdefault(domain, {}).setdefault(gpo_guid, {})
 
-                    # Proccessed settings output
-                    if proccessed_gpo and processed:
-                        output_proccessed.setdefault(domain, {}).setdefault(gpo_guid, {}).update(proccessed_gpo)
+                    if gpo_settings.get("GPO Name"):
+                        gpo_output["GPO Name"] = gpo_settings.get("GPO Name")
 
-                    # Analyse the GPOs settings
-                    else:
-                        analysis = self.gpo_analyser.analyse(
-                            domain_sid, gpo_guid, gpo_settings, proccessed_gpo, objects
-                        )
+                    if affected and (ous := self.ad_utils.get_gpo_impact(gpo_guid, domain_sid)):
+                        gpo_output.setdefault("Affected OUs", {}).update(ous)
 
-                        if analysis:
+                    gpo_output.update(analysis)
 
-                            # Get container list affected by the GPO
-                            if (affected or ingestor) and domain_sid:
-                                found_containers = self.ad_utils.get_containers_affected_by_gpo(gpo_guid, domain_sid)
+        return output or None
 
-                                if found_containers:
-                                    # Get analysis data and affected containers for enrichement
-                                    if ingestor:
-                                        analyses[gpo_guid] = {
-                                            "analysis": analysis,
-                                            "affected": [container.get("objectid") for container in found_containers],
-                                        }
+    def enrich_bloodhound(self, ingestor, domains=None, guids=None, objects=None):
+        """
+        Enrich BloodHound data
+        """
 
-                                    # Add container list to processed GPO and vulnerability outputs
-                                    if affected:
-                                        containers_dn = [
-                                            container.get("distinguishedname") for container in found_containers
-                                        ]
-                                        output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).setdefault(
-                                            "Affected Containers", []
-                                        ).extend(containers_dn)
-                                        output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(analysis)
+        output_enrichment = {}
+        parsed_policies = self.gpo_parser.parse_domains_policies(self.sysvol_path, self.ad_utils)
 
-                            else:
-                                # Analysis output to print
-                                output_analysis.setdefault(domain, {}).setdefault(gpo_guid, {}).update(analysis)
+        if not parsed_policies:
+            return None
 
-                # Enrich bloodhound with found vulnerabilities
-                if ingestor and domain_sid and analyses:
-                    output_enrichment[domain] = self.bloodhound_enricher.enrich(analyses, domain, domain_sid, ingestor)
+        for domain, gpos in parsed_policies.items():
 
-        # Print processed settings
-        if processed:
-            if not output_proccessed:
-                logging.info("No processed GPO settings were found...")
-                sys.exit()
-            if gpo_name:
-                output_proccessed = self.ad_utils.resolve_gpo_name(output_proccessed)
-            if print_json:
+            enrichment_data = []
 
-                print(json.dumps(output_proccessed, indent=4))
-            else:
-                print_processed(output_proccessed)
+            domain_sid = self.ad_utils.domain_to_sid(domain)
+            if domains and domain not in domains:
+                continue
 
-        # Print enrichement output
-        elif ingestor:
-            if not output_enrichment:
-                logging.info("No GPOs found to enrich BloodHound data...")
-                sys.exit()
+            # Iterates over GPOs
+            for gpo_guid, gpo_settings in gpos.items():
+                if guids and gpo_guid not in guids:
+                    continue
 
-            if print_json:
-                print(json.dumps(output_enrichment, indent=4))
-            else:
-                print_enriched(output_enrichment)
+                # Process the GPOs
+                processed_gpo = self.gpo_processor.process(gpo_settings, domain_sid, objects)
+                analysis = self.gpo_analyser.analyse(domain_sid, gpo_guid, gpo_settings, processed_gpo, objects)
 
-        # Print GPO settings in order
-        elif show:
-            if output_show:
-                if print_json:
-                    print(json.dumps(output_show, indent=4))
-                else:
-                    print_dict_as_tree("Applied GPO in order ", output_show)
+                if analysis:
+                    found_ous = self.ad_utils.get_ous_affected_by_gpo(gpo_guid, domain_sid)
+                    if found_ous:
+                        data = {
+                            "analysis": analysis,
+                            "affected": [ou.get("objectid") for ou in found_ous],
+                        }
+                        enrichment_data.append(data)
 
-        # Print GPO order output
-        elif order:
-            if not output_order:
-                logging.info("No order for this target...")
-                sys.exit()
-            if print_json:
-                print(json.dumps(output_order, indent=4))
-            else:
-                print_dict_as_tree("GPO Order ", output_order)
+            if ingestor and domain_sid and enrichment_data:
+                output = self.bloodhound_enricher.enrich(enrichment_data, domain, domain_sid, ingestor)
+                if output:
+                    output_enrichment[domain] = output
 
-        # Print analysis output
-        elif output_analysis:
-            if gpo_name:
-                output_analysis = self.ad_utils.resolve_gpo_name(output_analysis)
-            if print_json:
-                print(json.dumps(output_analysis, indent=4))
-            else:
-                print_analysed(output_analysis)
-
-        else:
-            logging.info("No results were found for the specified settings...")
-            sys.exit()
+        return output_enrichment or None
