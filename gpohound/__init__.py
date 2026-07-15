@@ -319,13 +319,14 @@ def main():
         else:
             ldap_path = args.ldap_path
 
-        # Check if the provided GPO path exists
-        if not Path(args.sysvol_path).exists():
-            console.print(f"'{args.sysvol_path}' SYSVOLS folder does not exist.")
-            return
-
-        # Set the list of files to parse
         if args.command in ["dump", "analysis"]:
+
+            # Check if the provided GPO path exists
+            if not Path(args.sysvol_path).exists():
+                console.print(f"'{args.sysvol_path}' SYSVOLS folder does not exist.")
+                return
+
+            # Set the list of files to parse
             if args.policies:
                 selected_policies = [policy_map[policy] for policy in args.policies]
             else:

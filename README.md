@@ -206,18 +206,19 @@ gpohound analysis --enrich-ce
 
 Default privileged trustees, as well as service accounts with SIDs starting with `S-1-5-8`, are excluded from analysis.
 
-| Privilege                       | Description                                            | Edge         |
-|---------------------------------|--------------------------------------------------------|--------------|
-| SeDebugPrivilege                | Allows user to debug and interact with any process     | `CanPrivEsc` |
-| SeBackupPrivilege               | Grants access to sensitive files                       | `CanPrivEsc` |
-| SeRestorePrivilege              | Bypasses object permissions during restore             | `CanPrivEsc` |
-| SeAssignPrimaryTokenPrivilege   | Enables token impersonation for SYSTEM escalation      | `CanPrivEsc` |
-| SeImpersonatePrivilege          | Allows creation of process under another user’s context| `CanPrivEsc` |
-| SeTakeOwnershipPrivilege        | Lets users take ownership of system objects            | `CanPrivEsc` |
-| SeTcbPrivilege                  | Grants the ability to act as part of the OS            | `CanPrivEsc` |
-| SeCreateTokenPrivilege          | Permits creation of authentication tokens              | `CanPrivEsc` |
-| SeLoadDriverPrivilege           | Authorizes driver loading/unloading                    | `CanPrivEsc` |
-| SeManageVolumePrivilege         | Grants volume or disk management privileges            | `CanPrivEsc` |
+| Privilege                     | Description                                                    | Edge         |
+| ----------------------------- | -------------------------------------------------------------- | ------------ |
+| SeDebugPrivilege              | Allows user to debug and interact with any process             | `CanPrivEsc` |
+| SeBackupPrivilege             | Grants access to sensitive files                               | `CanPrivEsc` |
+| SeRestorePrivilege            | Bypasses object permissions during restore                     | `CanPrivEsc` |
+| SeAssignPrimaryTokenPrivilege | Enables token impersonation for SYSTEM escalation              | `CanPrivEsc` |
+| SeImpersonatePrivilege        | Allows creation of process under another user’s context        | `CanPrivEsc` |
+| SeTakeOwnershipPrivilege      | Lets users take ownership of system objects                    | `CanPrivEsc` |
+| SeTcbPrivilege                | Grants the ability to act as part of the OS                    | `CanPrivEsc` |
+| SeCreateTokenPrivilege        | Permits creation of authentication tokens                      | `CanPrivEsc` |
+| SeLoadDriverPrivilege         | Authorizes driver loading/unloading                            | `CanPrivEsc` |
+| SeManageVolumePrivilege       | Grants volume or disk management privileges                    | `CanPrivEsc` |
+| SeEnableDelegationPrivilege   | Enable computer and user accounts to be trusted for delegation |              |
 
 # Improvement
 

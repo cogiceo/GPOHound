@@ -123,6 +123,9 @@ class BloodHoundEnricher:
                     for privilege, entry in analysed_settings.items():
                         edge = entry.get("edge")
 
+                        if not edge:
+                            continue
+
                         trustees_sid = []
                         for trustee in entry["trustees"]:
                             sid = trustee.get("sid")

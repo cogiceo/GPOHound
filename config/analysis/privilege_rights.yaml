@@ -78,3 +78,9 @@ SeLoadDriverPrivilege:
     - S-1-5-32-550
   edge : CanPrivEsc
   references: https://gtworek.github.io/Priv2Admin/
+
+SeEnableDelegationPrivilege:
+  analysis : 'SeEnableDelegationPrivilege : On a Domain Controller, this privilege allows the trustee to configure "Trusted for Delegation" on writable accounts, enabling abuse of unconstrained delegation'
+  default_trutees: 
+    - S-1-5-32-544
+  references: https://hacktricks.wiki/en/windows-hardening/active-directory-methodology/unconstrained-delegation.html#abusing-unconstrained-delegation-with-an-attacker-created-computer
