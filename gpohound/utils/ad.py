@@ -389,25 +389,54 @@ class ActiveDirectoryUtils:
 
         output = {}
 
-        found_ous = self.get_ous_affected_by_gpo(gpo_guid, domain_sid)
-        if not found_ous:
-            return None
+        if self.bloodhound.connection:
+            results = self.bloodhound.ous_affected_by_gpo_with_members(gpo_guid, domain_sid)
+            if not results:
+                return None
 
-        for ou in found_ous:
+            found_ous = self.bloodhound.nodes_to_dict(results)
 
-            users = self.get_users_in_ou(ou.get("objectid"), domain_sid)
-            users_names = [user.get("name") for user in users] if users else []
+            for ou in found_ous:
+                users_names = ou.get("Users", [])
+                machines_names = ou.get("Computers", [])
 
-            machines = self.get_machines_in_ou(ou.get("objectid"), domain_sid)
-            machines_names = [machine.get("name") for machine in machines] if machines else []
+                if machines_names or users_names:
+                    output[ou.get("distinguishedname")] = {
+                        "Computers": machines_names,
+                        "Users": users_names,
+                    }
 
-            if machines_names or users_names:
-                output[ou.get("distinguishedname")] = {
-                    "Computers": machines_names,
-                    "Users": users_names,
-                }
+            return output or None
 
-        return output or None
+        if self.sqlite_handler.dbs:
+            found_ous = self.get_ous_affected_by_gpo(gpo_guid, domain_sid)
+            if not found_ous:
+                return None
+
+            ou_ids = [ou.get("objectid") for ou in found_ous if ou.get("objectid")]
+
+            members = self.sqlite_handler.get_objs_in_ous(ou_ids, domain_sid)
+            if not members:
+                return None
+
+            for member in members:
+                ou_dn = member.get("ou_distinguishedname")
+
+                if ou_dn not in output:
+                    output[ou_dn] = {
+                        "Computers": [],
+                        "Users": [],
+                    }
+
+                if member.get("type", "").lower() == "computer":
+                    output[ou_dn]["Computers"].append(member.get("name"))
+
+                elif member.get("type", "").lower() == "user":
+                    output[ou_dn]["Users"].append(member.get("name"))
+
+            return output or None
+
+        return None
 
     def get_ous(self, domain_sid):
         """

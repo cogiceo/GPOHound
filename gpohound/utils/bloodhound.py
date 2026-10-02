@@ -278,6 +278,46 @@ class BloodHoundConnector:
 
         return self.query(query, params)
 
+    def ous_affected_by_gpo_with_members(self, gpo_guid, domain_sid):
+        """
+        Get Container, Domain, OU affected by a GPO with directly contained users/computers
+        """
+        params = {"gpo_guid": gpo_guid, "domain_sid": domain_sid}
+        query = """
+            MATCH (g:GPO)
+            WHERE toUpper(g.gpcpath) CONTAINS toUpper($gpo_guid)
+            AND toUpper(g.domainsid) = toUpper($domain_sid)
+            WITH g
+
+            OPTIONAL MATCH (g:GPO)-[r1:GPLink]->(c)
+            WHERE ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
+            WITH g, COLLECT(DISTINCT c) AS directOU
+
+            OPTIONAL MATCH p2 = (g:GPO)-[r3:GPLink]-()-[r4:Contains*1..]->(c)
+            WHERE (
+                (
+                    NONE(x IN TAIL(TAIL(NODES(p2)))
+                        WHERE x.blocksinheritance = true AND 'OU' IN LABELS(x))
+                    OR r3.enforced = true
+                )
+                AND ANY(label IN labels(c) WHERE label IN ['Container', 'OU', 'Domain'])
+            )
+
+            WITH directOU, COLLECT(DISTINCT c) AS indirectOU
+            WITH directOU + indirectOU AS allOU
+            UNWIND allOU AS ou
+            WITH DISTINCT ou
+
+            RETURN
+                ou {
+                    .*,
+                    Computers: [(ou)-[:Contains]->(computer:Computer) | computer.name],
+                    Users: [(ou)-[:Contains]->(user:User) | user.name]
+                } AS n
+            """
+
+        return self.query(query, params)
+
     def machines_in_ou(self, objectid, domain_sid):
         """
         Get machines in a OU
