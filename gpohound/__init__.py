@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import os
 import sys
 import logging
 from pathlib import Path
@@ -90,11 +91,12 @@ def main():
     auth_parser = auth_parent.add_argument_group(title="Connection")
     auth_parser.add_argument("--dc", type=str, help="Domain Controller IP address or hostname", required=True)
     auth_parser.add_argument("-d", "--domain", type=str, help="Target domain name", required=True)
-    auth_parser.add_argument("-u", "--username", type=str, help="[Domain/]Username for authentication", required=True)
+    auth_parser.add_argument("-u", "--username", type=str, help="[Domain/]Username for authentication")
     auth_parser.add_argument("-p", "--password", type=str, help="Password for authentication")
     auth_parser.add_argument("-H", "--hashes", type=str, help="NTLM hashes (LMHASH:NTHASH)")
     auth_parser.add_argument(
-        "-k", "--kerberos", action="store_true", help="Use Kerberos authentication (Requires hostname)"
+        "-k", "--kerberos", action="store_true",
+        help="Use Kerberos authentication. Uses KRB5CCNAME ccache if set (requires hostname)",
     )
     auth_parser.add_argument("--aeskey", type=str, help="AES key for Kerberos authentication")
 
@@ -248,17 +250,56 @@ def main():
 
     # SYSVOL and LDAP dump
     if args.command in ["sysvol", "ldap"]:
+
+        # KRB5CCNAME ccache support: extract username from ticket when -k is used
+        ccache_file = os.environ.get("KRB5CCNAME") if args.kerberos else None
+
+        if ccache_file:
+            # Strip FILE: prefix (standard krb5 convention)
+            if ccache_file.upper().startswith("FILE:"):
+                ccache_file = ccache_file[5:]
+
+            ccache_path = Path(ccache_file)
+            if not ccache_path.exists():
+                console.print(f"KRB5CCNAME ccache file '{ccache_file}' does not exist")
+                sys.exit(1)
+
+            # Normalize env var so Impacket reads the resolved path
+            os.environ["KRB5CCNAME"] = str(ccache_path.resolve())
+
+            try:
+                from impacket.krb5.ccache import CCache
+                ccache = CCache.loadFile(str(ccache_path.resolve()))
+                principal = ccache.principal
+            except Exception as e:
+                console.print(f"Unable to read ccache '{ccache_file}': {e}")
+                sys.exit(1)
+
+            if not args.username:
+                username = principal.components[0]["data"].decode()
+                logon_domain = principal.realm["data"].decode()
+            else:
+                if "/" in args.username:
+                    logon_domain, username = args.username.rsplit("/", 1)
+                else:
+                    username = args.username
+                    logon_domain = args.domain
+        else:
+            if not args.username:
+                console.print("-u/--username is required (or set KRB5CCNAME with -k)")
+                sys.exit(1)
+
+            if "/" in args.username:
+                logon_domain, username = args.username.rsplit("/", 1)
+            else:
+                username = args.username
+                logon_domain = args.domain
+
         if args.kerberos and is_ip(args.dc):
             console.print("Kerberos authentication requires hostname of the DC instead of an IP")
-            sys.exit()
+            sys.exit(1)
 
         domain = args.domain.lower()
-
-        if "/" in args.username:
-            logon_domain, username = args.username.rsplit("/", 1)
-        else:
-            username = args.username
-            logon_domain = args.domain
 
         if args.hashes:
             lmhash, nthash = args.hashes.split(":")
