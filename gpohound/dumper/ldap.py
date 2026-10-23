@@ -93,6 +93,10 @@ class LDAPDumper:
         for search_dn, query_groups in self.ldap_queries.items():
             ldap_conn = self.ldap_utils.connect(search_dn)
 
+            if not ldap_conn:
+                console.print(f"Error dumping the LDAP objects")
+                return
+
             for query_group in query_groups:
                 for query_name, query in query_group.items():
                     results.setdefault(query_name, {})

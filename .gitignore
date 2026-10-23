@@ -5,3 +5,4 @@ refs/
 build/
 dist/
 gpos/
+*.ccache
