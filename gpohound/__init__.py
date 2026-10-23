@@ -18,7 +18,6 @@ from rich.console import Console
 from rich.logging import RichHandler
 from platformdirs import user_config_dir
 
-
 console = Console(highlight=False)
 
 
@@ -95,7 +94,9 @@ def main():
     auth_parser.add_argument("-p", "--password", type=str, help="Password for authentication")
     auth_parser.add_argument("-H", "--hashes", type=str, help="NTLM hashes (LMHASH:NTHASH)")
     auth_parser.add_argument(
-        "-k", "--kerberos", action="store_true",
+        "-k",
+        "--kerberos",
+        action="store_true",
         help="Use Kerberos authentication. Uses KRB5CCNAME ccache if set (requires hostname)",
     )
     auth_parser.add_argument("--aeskey", type=str, help="AES key for Kerberos authentication")
@@ -122,7 +123,7 @@ def main():
     smb_parser.add_argument("-a", "--analysis", action="store_true", help="Download only GPOs that will be analysed")
 
     # LDAP command
-    ldap_parser = subparsers.add_parser("ldap", parents=[auth_parent], help="Dump LDAP data")
+    ldap_parser = subparsers.add_parser("ldap", parents=[verbosity_parent, auth_parent], help="Dump LDAP data")
     ldap_parser.add_argument("-o", "--output", type=str, default="gpos/ldap", help="Output folder (default: gpos/ldap)")
     ldap_parser.add_argument("--overwrite", action="store_true", help="Overwrite the existing database file")
     ldap_args_parser = ldap_parser.add_argument_group(title="LDAP flags")
@@ -269,6 +270,7 @@ def main():
 
             try:
                 from impacket.krb5.ccache import CCache
+
                 ccache = CCache.loadFile(str(ccache_path.resolve()))
                 principal = ccache.principal
             except Exception as e:
@@ -295,9 +297,15 @@ def main():
                 username = args.username
                 logon_domain = args.domain
 
-        if args.kerberos and is_ip(args.dc):
-            console.print("Kerberos authentication requires hostname of the DC instead of an IP")
-            sys.exit(1)
+        if args.kerberos:
+            if is_ip(args.dc):
+                console.print("Kerberos authentication requires hostname of the DC instead of an IP")
+                sys.exit(1)
+            elif args.dc.lower() == args.domain.lower():
+                console.print(
+                    "The DC hostname must be different from the domain name. Please specify the DC's hostname"
+                )
+                sys.exit(1)
 
         domain = args.domain.lower()
 
@@ -313,7 +321,10 @@ def main():
             )
 
             if not smb_utils.smbClient:
-                console.print("Failed to connect to the SMB server.")
+                console.print("Failed to connect to the SMB server")
+                return
+            elif not smb_utils.connection:
+                console.print("Failed to authenticate to the SMB server")
                 return
 
             sysvol_dumper = SYSVOLDumper(

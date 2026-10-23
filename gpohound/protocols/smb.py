@@ -32,7 +32,7 @@ class SMBUtils:
         self.do_kerberos = do_kerberos
         self.aeskey = aeskey
         self.smbClient = None
-        self.connect()
+        self.connection = self.connect()
 
     def connect(self):
         try:
@@ -40,26 +40,33 @@ class SMBUtils:
         except (Exception, NetBIOSTimeout, OSError) as e:
             logging.info(f"Error creating SMB connection : {e}")
             logging.debug(traceback.format_exc())
-            return
+            return False
 
-        if self.do_kerberos is True:
-            self.smbClient.kerberosLogin(
-                self.username,
-                self.password,
-                self.logon_domain,
-                self.lmhash,
-                self.nthash,
-                self.aeskey,
-                self.host,
-            )
-        else:
-            self.smbClient.login(
-                self.username,
-                self.password,
-                self.logon_domain,
-                self.lmhash,
-                self.nthash,
-            )
+        try:
+            if self.do_kerberos is True:
+                self.smbClient.kerberosLogin(
+                    self.username,
+                    self.password,
+                    self.logon_domain,
+                    self.lmhash,
+                    self.nthash,
+                    self.aeskey,
+                    self.host,
+                )
+            else:
+                self.smbClient.login(
+                    self.username,
+                    self.password,
+                    self.logon_domain,
+                    self.lmhash,
+                    self.nthash,
+                )
+        except Exception as e:
+            logging.info(f"Error authenticating with the SMB server : {e}")
+            logging.debug(traceback.format_exc())
+            return False
+
+        return True
 
     def reconnect(self):
         """
@@ -71,8 +78,8 @@ class SMBUtils:
 
             # Renegotiate the session
             time.sleep(3)
-            self.connect()
-            return True
+            if self.connect():
+                return True
 
         return False
 
@@ -93,7 +100,7 @@ class SMBUtils:
             # Get file list for the current folder
             filelist = self.smbClient.listPath(share, subfolder + "*")
 
-        except SessionError as e:
+        except (SessionError, BrokenPipeError) as e:
             if "STATUS_ACCESS_DENIED" in str(e):
                 console.print(f"[red bold][-][/] Cannot list files in SYSVOL{subfolder.strip('*')}")
             elif "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):

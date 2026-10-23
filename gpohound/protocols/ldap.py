@@ -51,22 +51,39 @@ class LDAPUtils:
         else:
             prefix = "ldap://"
 
-        ldap_conn = LDAPConnection(f"{prefix}{self.kdc_host}", self.kdc_host)
-        ldap_conn.searchBase = base_dn
+        try:
+            ldap_conn = LDAPConnection(f"{prefix}{self.kdc_host}", self.kdc_host)
+            ldap_conn.searchBase = base_dn
+        except Exception as e:
+            logging.info(f"Error creating LDAP connection : {e}")
+            logging.debug(traceback.format_exc())
+            return None
 
         # Authentication
-        if self.do_kerberos:
-            ldap_conn.kerberosLogin(
-                self.username,
-                self.password,
-                self.logon_domain,
-                self.lmhash,
-                self.nthash,
-                self.aeskey,
-                kdcHost=self.kdc_host,
-            )
-        else:
-            ldap_conn.login(self.username, self.password, self.logon_domain, self.lmhash, self.nthash)
+        try:
+            if self.do_kerberos:
+                ldap_conn.kerberosLogin(
+                    self.username,
+                    self.password,
+                    self.logon_domain,
+                    self.lmhash,
+                    self.nthash,
+                    self.aeskey,
+                    kdcHost=self.kdc_host,
+                )
+            else:
+                ldap_conn.login(
+                    self.username,
+                    self.password,
+                    self.logon_domain,
+                    self.lmhash,
+                    self.nthash,
+                )
+        except Exception as e:
+            logging.info(f"Error authenticating with the LDAP server : {e}")
+            logging.debug(traceback.format_exc())
+            return None
+
         return ldap_conn
 
     def get_forest_root_dn(self, base_dn):
