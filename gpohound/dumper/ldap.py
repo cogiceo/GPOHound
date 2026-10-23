@@ -94,7 +94,7 @@ class LDAPDumper:
             ldap_conn = self.ldap_utils.connect(search_dn)
 
             if not ldap_conn:
-                console.print(f"Error dumping to the LDAP objects")
+                console.print(f"Error dumping the LDAP objects")
                 return
 
             for query_group in query_groups:
